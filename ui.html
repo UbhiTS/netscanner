@@ -476,7 +476,7 @@ function targetError(str){
 }
 function toast(msg,kind){const t=document.createElement('div');t.className='t '+(kind||'');t.textContent=msg;
   document.getElementById('toast').appendChild(t);setTimeout(()=>t.remove(),5200);}
-async function api(path,opts){const r=await fetch(path,opts);if(r.status===401){location.href='/login';throw new Error('unauthorized');}if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+async function api(path,opts){opts=Object.assign({cache:'no-store'},opts||{});const r=await fetch(path,opts);if(r.status===401){location.href='/login';throw new Error('unauthorized');}if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 function signOut(){fetch('/api/logout',{method:'POST'}).then(()=>location.href='/login').catch(()=>location.href='/login');}
 
 async function loadInfo(){
@@ -581,14 +581,19 @@ async function createTokenUI(){
   const name=(nm&&nm.value.trim())||'token';
   const days=(dys&&dys.value.trim())?Number(dys.value.trim()):null;
   try{
-    await api('/api/tokens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',name:name,expires_days:days})});
-    toast('API token created','green'); renderEvents();
+    const r=await api('/api/tokens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',name:name,expires_days:days})});
+    if(nm)nm.value=''; if(dys)dys.value='';
+    toast('API token created','green');
+    await renderSettings();
+    const id=r&&r.token&&r.token.id;
+    if(id){const el=document.getElementById('tokval-'+id);
+      if(el){el.scrollIntoView({block:'center',behavior:'smooth'});el.focus();el.select();}}
   }catch(e){toast('Could not create token: '+e.message,'red');}
 }
 async function deleteTokenUI(id){
   try{
     await api('/api/tokens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',id:id})});
-    toast('Token deleted','amber'); renderEvents();
+    toast('Token deleted','amber'); renderSettings();
   }catch(e){toast('Could not delete token: '+e.message,'red');}
 }
 function copyText(txt){
@@ -1323,7 +1328,7 @@ async function renderSettings(){
   if(toks.length){
     trows=toks.map(t=>'<div class="tokrow"><div class="tokmeta"><div class="nm">'+esc(t.name||'token')+'</div>'+
       '<div class="mm">created '+relTime(t.created)+' · '+(t.last_used?('used '+relTime(t.last_used)):'never used')+' · '+expLabel(t.expires)+'</div>'+
-      '<div class="tokval"><input type="text" readonly value="'+esc(t.token)+'" onclick="this.select()"><button class="sm ghost" onclick="copyText(\''+esc(t.token)+'\')">Copy</button></div></div>'+
+      '<div class="tokval"><input id="tokval-'+esc(t.id)+'" type="text" readonly value="'+esc(t.token)+'" onclick="this.select()"><button class="sm ghost" onclick="copyText(\''+esc(t.token)+'\')">Copy</button></div></div>'+
       '<div><button class="sm ghost" onclick="deleteTokenUI(\''+esc(t.id)+'\')">Delete</button></div></div>').join('');
   }else{trows='<p class="hint">No API tokens yet. Create one below for your agents or scripts.</p>';}
   html+='<div class="seccard"><h3>API tokens</h3>'+
