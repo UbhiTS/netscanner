@@ -53,6 +53,8 @@ header{position:sticky;top:0;z-index:30;backdrop-filter:blur(10px);
 .adv{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:11px;
   padding-top:11px;border-top:1px dashed var(--border)}
 .ouibox{display:flex;align-items:center;gap:9px;margin-left:auto;font-size:12px;color:var(--muted)}
+.histbtn{margin-left:auto}
+.histbtn.active{background:linear-gradient(135deg,var(--cyan),var(--blue));border:none;color:#04121c;font-weight:700}
 .dotled{width:7px;height:7px;border-radius:50%;background:var(--faint);box-shadow:0 0 7px currentColor}
 .dotled.on{background:var(--green);color:var(--green)}
 .bar{height:6px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:13px 0 5px}
@@ -246,6 +248,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
         </select>
         <label class="chk" title="Show a desktop notification when new devices appear"><input type="checkbox" id="notify" onchange="toggleNotify()"> Desktop alerts</label>
       </div>
+      <button id="v-hist" class="ghost histbtn" onclick="setView('hist')">History</button>
     </div>
     <div class="adv">
       <label class="chk" title="Discover Chromecast / AirPlay / printers / Apple names"><input type="checkbox" id="usemdns" checked> mDNS / Bonjour</label>
@@ -289,9 +292,8 @@ textarea.ceinput{min-height:58px;resize:vertical}
   <div class="viewbar">
     <div class="seg">
       <button id="v-table" class="active" onclick="setView('table')">Table</button>
-      <button id="v-map" onclick="setView('map')">Map</button>
       <button id="v-cards" onclick="setView('cards')">Cards</button>
-      <button id="v-hist" onclick="setView('hist')">History</button>
+      <button id="v-map" onclick="setView('map')">Map</button>
     </div>
     <div class="spacer"></div>
     <div class="tool">
