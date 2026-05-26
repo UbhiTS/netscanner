@@ -18,6 +18,7 @@ Env: NETSCANNER_HOST, NETSCANNER_PORT, NETSCANNER_NO_BROWSER, NETSCANNER_DATA
 import argparse
 import base64
 import csv
+import hashlib
 import hmac
 import io
 import ipaddress
@@ -55,9 +56,11 @@ SEEN_FILE = os.path.join(DATA_DIR, "seen_macs.json")
 NETSCANNER_TOKEN = os.environ.get("NETSCANNER_TOKEN", "").strip()          # legacy static bearer token
 NETSCANNER_USER = (os.environ.get("NETSCANNER_USER", "admin").strip() or "admin")
 NETSCANNER_PASS = os.environ.get("NETSCANNER_PASS", "")
-NETSCANNER_TRUST_LOCALHOST = os.environ.get("NETSCANNER_TRUST_LOCALHOST", "1").strip().lower() \
-    not in ("0", "false", "no", "off", "")
+NETSCANNER_TRUST_LOCALHOST = os.environ.get("NETSCANNER_TRUST_LOCALHOST", "0").strip().lower() \
+    in ("1", "true", "yes", "on")
+NETSCANNER_OPEN = os.environ.get("NETSCANNER_OPEN", "").strip().lower() in ("1", "true", "yes", "on")
 TOKENS_FILE = os.path.join(DATA_DIR, "tokens.json")
+AUTH_FILE = os.path.join(DATA_DIR, "auth.json")
 for _d in (DATA_DIR, HISTORY_DIR):
     try:
         os.makedirs(_d, exist_ok=True)
@@ -1634,8 +1637,54 @@ def token_valid(value):
     return False
 
 
+PBKDF2_ITER = 200000
+
+
+def _hash_pw(password, salt):
+    return hashlib.pbkdf2_hmac("sha256", (password or "").encode("utf-8"), salt, PBKDF2_ITER).hex()
+
+
+def set_admin(username, password):
+    salt = secrets.token_bytes(16)
+    a = {"username": (str(username or "admin").strip() or "admin"),
+         "salt": salt.hex(), "hash": _hash_pw(password or "admin", salt),
+         "algo": "pbkdf2_sha256", "iter": PBKDF2_ITER, "updated": time.time()}
+    _save_json(AUTH_FILE, a)
+    return a
+
+
+def load_admin():
+    a = _load_json(AUTH_FILE, None)
+    if a and a.get("hash") and a.get("salt") and a.get("username"):
+        return a
+    # First launch: seed from env if a password was supplied, else default admin/admin.
+    return set_admin(NETSCANNER_USER, NETSCANNER_PASS or "admin")
+
+
+def verify_admin(username, password):
+    a = load_admin()
+    try:
+        calc = _hash_pw(password, bytes.fromhex(a["salt"]))
+    except Exception:
+        return False
+    if hmac.compare_digest(str(username or ""), a.get("username", "")) and \
+            hmac.compare_digest(calc, a.get("hash", "")):
+        return True
+    # Env credentials always work too (recovery / ops override).
+    if NETSCANNER_PASS and hmac.compare_digest(str(username or ""), NETSCANNER_USER) and \
+            hmac.compare_digest(str(password or ""), NETSCANNER_PASS):
+        return True
+    return False
+
+
+def is_default_admin():
+    return verify_admin("admin", "admin")
+
+
 def auth_configured():
-    return bool(NETSCANNER_PASS or NETSCANNER_TOKEN or list_tokens())
+    # Auth is on by default: a default admin/admin credential is always present.
+    # Set NETSCANNER_OPEN=1 to run fully open on a trusted segment.
+    return not NETSCANNER_OPEN
 
 
 # --------------------------------------------------------------------------- #
@@ -2274,6 +2323,15 @@ def openapi_spec():
                             "expires_days": {"type": "integer", "description": "Omit for a long-lived token"},
                             "id": {"type": "string"}}}}}},
                     "responses": {"200": ok, "400": {"description": "unknown action"}}}},
+            "/api/credentials": {"post": {"tags": ["security"],
+                "summary": "Change the admin username/password (persisted, hashed)",
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {
+                    "type": "object", "required": ["password", "current_password"], "properties": {
+                        "username": {"type": "string"},
+                        "current_password": {"type": "string"},
+                        "password": {"type": "string"}}}}}},
+                "responses": {"200": ok, "400": {"description": "password required"},
+                              "403": {"description": "current password incorrect"}}}},
             "/mcp": {"post": {"tags": ["agent"],
                 "summary": "Model Context Protocol endpoint (JSON-RPC 2.0)",
                 "description": "Streamable-HTTP MCP transport. Methods: initialize, "
@@ -2430,8 +2488,6 @@ class Handler(BaseHTTPRequestHandler):
         return (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
 
     def _basic_ok(self):
-        if not NETSCANNER_PASS:
-            return False
         hdr = self.headers.get("Authorization", "")
         if not hdr.startswith("Basic "):
             return False
@@ -2439,7 +2495,7 @@ class Handler(BaseHTTPRequestHandler):
             user, _, pw = base64.b64decode(hdr[6:].strip()).decode("utf-8", "replace").partition(":")
         except Exception:
             return False
-        return hmac.compare_digest(user, NETSCANNER_USER) and hmac.compare_digest(pw, NETSCANNER_PASS)
+        return verify_admin(user, pw)
 
     def _authed(self):
         if not auth_configured():
@@ -2472,7 +2528,9 @@ class Handler(BaseHTTPRequestHandler):
                 "gateway": default_gateway(), "cpu": os.cpu_count(),
                 "platform": platform.system() + " " + platform.release(),
                 "oui": oui_status(),
-                "auth": {"enabled": auth_configured(), "admin": bool(NETSCANNER_PASS),
+                "auth": {"enabled": auth_configured(),
+                         "username": load_admin().get("username"),
+                         "default_creds": is_default_admin(),
                          "trust_localhost": NETSCANNER_TRUST_LOCALHOST}})
         if path == "/api/oui":
             return self._send(200, oui_status())
@@ -2602,6 +2660,15 @@ class Handler(BaseHTTPRequestHandler):
             if action == "delete":
                 return self._send(200, {"ok": delete_token((data.get("id") or "").strip())})
             return self._send(400, {"error": "unknown action"})
+        if path == "/api/credentials":
+            newpw = data.get("password") or ""
+            if not newpw:
+                return self._send(400, {"error": "password required"})
+            cur_user = load_admin().get("username")
+            if not verify_admin(cur_user, data.get("current_password") or ""):
+                return self._send(403, {"error": "current password incorrect"})
+            a = set_admin(data.get("username") or cur_user, newpw)
+            return self._send(200, {"ok": True, "username": a["username"]})
         return self._send(404, {"error": "not found"})
 
 

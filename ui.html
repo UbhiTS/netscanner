@@ -236,7 +236,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
 .tokval input{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);color:#cfe0f5;
   border-radius:7px;padding:6px 9px;font-family:var(--mono);font-size:11.5px}
 .tokform{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
-.tokform input[type=text]{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px}
+.tokform input[type=text],.tokform input[type=password]{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px}
 .tokform input.days{width:150px}
 .snip{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;
   font-family:var(--mono);font-size:11.5px;color:#bcd0ee;white-space:pre-wrap;word-break:break-all;margin-top:6px}
@@ -297,6 +297,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
         <span class="blchip" id="blchip" onclick="setView('events')" title="Known-good baseline status — click to manage"><span class="d" id="bldot"></span><span id="bltxt">Baseline: off</span></span>
         <button id="v-events" class="ghost navbtn" onclick="setView('events')">Events<span class="evbadge" id="evbadge" style="display:none">0</span></button>
         <button id="v-hist" class="ghost navbtn" onclick="setView('hist')">History</button>
+        <button id="v-settings" class="ghost navbtn" onclick="setView('settings')" title="Security &amp; settings">⚙ Settings</button>
       </div>
     </div>
     <div class="adv">
@@ -386,6 +387,9 @@ textarea.ceinput{min-height:58px;resize:vertical}
   </div>
   <div id="view-events" style="display:none">
     <div class="secpanel" id="events-body"></div>
+  </div>
+  <div id="view-settings" style="display:none">
+    <div class="secpanel" id="settings-body"></div>
   </div>
 
   <div class="empty" id="empty">
@@ -485,9 +489,12 @@ async function loadInfo(){
 }
 function updateSecWarn(auth){
   const el=document.getElementById('secwarn'); if(!el)return;
-  if(auth&&!auth.enabled){
+  if(auth&&auth.enabled===false){
     el.style.display='flex';
-    el.innerHTML='<span>⚠</span><span><b>Unsecured.</b> The API and MCP endpoint are open to anyone who can reach this server. Set an admin password (<span class="mono">NETSCANNER_PASS</span>), or create an API token in <a href="#" onclick="setView(\'events\');return false" style="color:#ffd98a">Events → API access</a>, to lock it down.</span>';
+    el.innerHTML='<span>⚠</span><span><b>Auth disabled.</b> NETSCANNER_OPEN is set — the dashboard, API and MCP are open to anyone who can reach this server.</span>';
+  }else if(auth&&auth.default_creds){
+    el.style.display='flex';
+    el.innerHTML='<span>⚠</span><span><b>Default credentials.</b> You\'re still using <span class="mono">admin / admin</span>. Change them in <a href="#" onclick="setView(\'settings\');return false" style="color:#ffd98a">Settings</a>.</span>';
   }else{el.style.display='none';}
 }
 function updateOui(o){
@@ -1206,13 +1213,13 @@ function notifyNew(n,np){
 
 function setView(v){
   view=v;lastKey='';
-  ['cards','table','map','hist','events'].forEach(x=>{
+  ['cards','table','map','hist','events','settings'].forEach(x=>{
     document.getElementById('view-'+x).style.display=(x===v)?'block':'none';
     const btn=document.getElementById('v-'+x); if(btn)btn.classList.toggle('active',x===v);
   });
-  document.querySelector('.tool').style.visibility=(v==='hist'||v==='events')?'hidden':'visible';
+  document.querySelector('.tool').style.visibility=(v==='hist'||v==='events'||v==='settings')?'hidden':'visible';
   if(v!=='map')stopSim();
-  if(v==='hist')loadHistory();else if(v==='events')renderEvents();else render();
+  if(v==='hist')loadHistory();else if(v==='events')renderEvents();else if(v==='settings')renderSettings();else render();
 }
 async function loadHistory(){
   try{const items=await api('/api/history');
@@ -1236,8 +1243,6 @@ async function renderEvents(){
   try{appInfo=await api('/api/info');updateSecWarn(appInfo.auth);}catch(_){}
   let evs=[];
   try{const r=await api('/api/events?limit=200');evs=r.events||[];}catch(_){}
-  let toks=[], authInfo=(appInfo&&appInfo.auth)||{};
-  try{const tr=await api('/api/tokens');toks=tr.tokens||[];}catch(_){}
   const b=baseline||{}, has=!!b.size;
   const rogues=ROGUE.size, dp=driftPortCount();
   const tiers={critical:0,high:0,medium:0,low:0,none:0};
@@ -1270,26 +1275,6 @@ async function renderEvents(){
     '<div class="x"><b class="tier-medium">'+tiers.medium+'</b><span>Medium</span></div>'+
     '<div class="x"><b class="tier-low">'+tiers.low+'</b><span>Low</span></div>'+
     '<div class="x"><b class="tier-none">'+tiers.none+'</b><span>None</span></div></div></div>';
-  // API access & tokens
-  let trows='';
-  if(toks.length){
-    trows=toks.map(t=>'<div class="tokrow"><div class="tokmeta"><div class="nm">'+esc(t.name||'token')+'</div>'+
-      '<div class="mm">created '+relTime(t.created)+' · '+(t.last_used?('used '+relTime(t.last_used)):'never used')+' · '+expLabel(t.expires)+'</div>'+
-      '<div class="tokval"><input type="text" readonly value="'+esc(t.token)+'" onclick="this.select()"><button class="sm ghost" onclick="copyText(\''+esc(t.token)+'\')">Copy</button></div></div>'+
-      '<div><button class="sm ghost" onclick="deleteTokenUI(\''+esc(t.id)+'\')">Delete</button></div></div>').join('');
-  }else{trows='<p class="hint">No API tokens yet. Create one below for your agents or scripts.</p>';}
-  const mcpUrl=(location.origin||'')+'/mcp';
-  let statusline = authInfo.enabled
-    ? 'Access control is <b style="color:var(--green)">on</b>.'
-    : 'Access control is <b style="color:#f0c674">off</b> — set NETSCANNER_PASS for dashboard login, or just create a token below for agents.';
-  statusline+=' Admin login: '+(authInfo.admin?'enabled':'not set')+' · localhost trusted: '+(authInfo.trust_localhost?'yes':'no')+'.';
-  html+='<div class="seccard"><h3>API access &amp; tokens</h3>'+
-    '<div class="sub">'+statusline+' Tokens authorize agents and scripts with <span class="mono">Authorization: Bearer &lt;token&gt;</span> on the API and the MCP endpoint, and stay valid until you delete them (unless you set an expiry).</div>'+
-    trows+
-    '<div class="tokform"><input type="text" id="tok-name" placeholder="Token name (e.g. claude-agent)"><input type="text" class="days" id="tok-days" placeholder="expiry days (blank = never)"><button class="sm primary" onclick="createTokenUI()">Create token</button></div>'+
-    '<div class="sub" style="margin:14px 0 4px">Use it from an agent or curl:</div>'+
-    '<div class="snip">curl -H "Authorization: Bearer &lt;token&gt;" '+esc(mcpUrl)+' \\\n  -d \'{"jsonrpc":"2.0","id":1,"method":"tools/list"}\'</div>'+
-    '</div>';
   let feed='';
   if(evs.length){
     feed=evs.map(e=>{
@@ -1304,6 +1289,56 @@ async function renderEvents(){
   }
   html+='<div class="seccard evfeed"><h3>Event log</h3><div class="sub">Unexpected devices and ports detected over time, newest first.</div><div class="tablewrap"><table class="dev"><thead><tr><th>When</th><th>Type</th><th>Detail</th></tr></thead><tbody>'+feed+'</tbody></table></div></div>';
   body.innerHTML=html;
+}
+async function renderSettings(){
+  const body=document.getElementById('settings-body');
+  body.innerHTML='<p class="hint">Loading…</p>';
+  let info=appInfo;
+  try{info=await api('/api/info');appInfo=info;updateSecWarn(info.auth);}catch(_){}
+  const auth=(info&&info.auth)||{};
+  let toks=[];
+  try{const tr=await api('/api/tokens');toks=tr.tokens||[];}catch(_){}
+  const mcpUrl=(location.origin||'')+'/mcp';
+  let html='';
+  html+='<div class="seccard"><h3>Access control</h3>'+
+    '<div class="sub">Login protects the dashboard, the API and the MCP endpoint. Set <span class="mono">NETSCANNER_OPEN=1</span> to run fully open on a trusted segment.</div>'+
+    '<div class="bigstat">'+
+      '<div class="x"><b class="'+(auth.enabled===false?'tier-high':'tier-none')+'" style="font-size:17px">'+(auth.enabled===false?'OFF':'ON')+'</b><span>Auth</span></div>'+
+      '<div class="x"><b style="font-size:17px">'+esc(auth.username||'admin')+'</b><span>Admin user</span></div>'+
+      '<div class="x"><b style="font-size:17px">'+(auth.trust_localhost?'trusted':'prompted')+'</b><span>Localhost</span></div>'+
+    '</div>'+
+    (auth.default_creds?'<p class="hint" style="color:#f0c674;margin-top:10px">⚠ Still using the default admin / admin — set a new password below.</p>':'')+
+  '</div>';
+  html+='<div class="seccard"><h3>Admin login</h3>'+
+    '<div class="sub">Change the dashboard username and password. Stored hashed in the data volume, so it survives restarts.'+(auth.trust_localhost?' Localhost is currently trusted (no prompt); set NETSCANNER_TRUST_LOCALHOST=0 to require login locally too.':'')+'</div>'+
+    '<div class="tokform"><input type="text" id="adm-user" placeholder="username" value="'+esc(auth.username||'admin')+'">'+
+     '<input type="password" id="adm-cur" placeholder="current password" autocomplete="off">'+
+     '<input type="password" id="adm-new" placeholder="new password" autocomplete="off">'+
+     '<button class="sm primary" onclick="changeCreds()">Update login</button></div></div>';
+  let trows='';
+  if(toks.length){
+    trows=toks.map(t=>'<div class="tokrow"><div class="tokmeta"><div class="nm">'+esc(t.name||'token')+'</div>'+
+      '<div class="mm">created '+relTime(t.created)+' · '+(t.last_used?('used '+relTime(t.last_used)):'never used')+' · '+expLabel(t.expires)+'</div>'+
+      '<div class="tokval"><input type="text" readonly value="'+esc(t.token)+'" onclick="this.select()"><button class="sm ghost" onclick="copyText(\''+esc(t.token)+'\')">Copy</button></div></div>'+
+      '<div><button class="sm ghost" onclick="deleteTokenUI(\''+esc(t.id)+'\')">Delete</button></div></div>').join('');
+  }else{trows='<p class="hint">No API tokens yet. Create one below for your agents or scripts.</p>';}
+  html+='<div class="seccard"><h3>API tokens</h3>'+
+    '<div class="sub">Authorize agents and scripts with <span class="mono">Authorization: Bearer &lt;token&gt;</span> on the API and the MCP endpoint. Long-lived unless you set an expiry; values stay viewable so you can copy them into an agent later.</div>'+
+    trows+
+    '<div class="tokform"><input type="text" id="tok-name" placeholder="Token name (e.g. claude-agent)"><input type="text" class="days" id="tok-days" placeholder="expiry days (blank = never)"><button class="sm primary" onclick="createTokenUI()">Create token</button></div>'+
+    '<div class="sub" style="margin:14px 0 4px">Use it from an agent or curl:</div>'+
+    '<div class="snip">'+esc('curl -H "Authorization: Bearer <TOKEN>" '+mcpUrl+' -d \'{"jsonrpc":"2.0","id":1,"method":"tools/list"}\'')+'</div>'+
+  '</div>';
+  body.innerHTML=html;
+}
+function changeCreds(){
+  const u=(document.getElementById('adm-user').value||'').trim()||'admin';
+  const cur=document.getElementById('adm-cur').value;
+  const np=document.getElementById('adm-new').value;
+  if(!np){toast('Enter a new password','amber');return;}
+  api('/api/credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,current_password:cur,password:np})})
+    .then(()=>toast('Admin login updated — reload the page and sign in with the new credentials.','green'))
+    .catch(e=>toast((''+e.message).indexOf('403')>=0?'Current password is incorrect':'Could not update: '+e.message,'red'));
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&editingIp)cancelCardEdit();});
 window.addEventListener('resize',()=>{if(view==='map')renderTopo();});

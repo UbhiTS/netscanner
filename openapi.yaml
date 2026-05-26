@@ -347,6 +347,34 @@ paths:
           description: "OK"
         "400":
           description: "unknown action"
+  "/api/credentials":
+    post:
+      tags:
+      - "security"
+      summary: "Change the admin username/password (persisted, hashed)"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required:
+              - "password"
+              - "current_password"
+              properties:
+                username:
+                  type: "string"
+                current_password:
+                  type: "string"
+                password:
+                  type: "string"
+      responses:
+        "200":
+          description: "OK"
+        "400":
+          description: "password required"
+        "403":
+          description: "current password incorrect"
   "/mcp":
     post:
       tags:

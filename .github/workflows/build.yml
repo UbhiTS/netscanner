@@ -1,23 +1,93 @@
 name: build
 
-# Build the Docker image + standalone Windows .exe.
-# Publishing a GitHub Release (or pushing a version tag) also attaches the .exe,
-# a docker-image.txt, and the GHCR pull commands to that release.
+# On every push to main, auto-increment the patch version (vX.Y.Z -> vX.Y.(Z+1)),
+# tag it, and publish a GitHub Release with the Windows .exe + GHCR image notes.
+# Also builds on PRs (no release), and supports manual version bumps + tag pushes.
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
-  release:
-    types: [published]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump for this run"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 permissions:
-  contents: write   # publish/update the Release + attach assets
+  contents: write   # create tags + publish the Release
   packages: write   # push the Docker image to GHCR
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  version:
+    name: Compute & tag version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+      version: ${{ steps.bump.outputs.version }}
+      released: ${{ steps.bump.outputs.released }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # need full tag history
+      - name: Compute next version
+        id: bump
+        env:
+          BUMP_IN: ${{ github.event.inputs.bump }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -e
+          git fetch --tags --force
+          # A pushed tag releases that exact tag (no bump).
+          case "$GITHUB_REF" in
+            refs/tags/v*)
+              newtag="${GITHUB_REF_NAME}"
+              echo "tag=$newtag"            >> "$GITHUB_OUTPUT"
+              echo "version=${newtag#v}"    >> "$GITHUB_OUTPUT"
+              echo "released=true"          >> "$GITHUB_OUTPUT"
+              echo "Releasing pushed tag $newtag"
+              exit 0 ;;
+          esac
+          latest=$(git tag -l 'v*.*.*' | sort -V | tail -n1)
+          [ -z "$latest" ] && latest="v0.0.0"
+          echo "Latest tag: $latest"
+          ver="${latest#v}"; IFS='.' read -r MA MI PA <<< "$ver"
+          BUMP="${BUMP_IN:-patch}"
+          case "$BUMP" in
+            major) MA=$((MA+1)); MI=0; PA=0 ;;
+            minor) MI=$((MI+1)); PA=0 ;;
+            *)     PA=$((PA+1)) ;;
+          esac
+          newtag="v${MA}.${MI}.${PA}"
+          echo "tag=$newtag"           >> "$GITHUB_OUTPUT"
+          echo "version=${MA}.${MI}.${PA}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "pull_request" ] || printf '%s' "$MSG" | grep -qi '\[skip release\]'; then
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "Not releasing (PR or [skip release]); next version would be $newtag"
+            exit 0
+          fi
+          if git rev-parse "$newtag" >/dev/null 2>&1; then
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $newtag already exists — skipping."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$newtag" -m "Release $newtag"
+          git push origin "$newtag"
+          echo "released=true" >> "$GITHUB_OUTPUT"
+          echo "Created and pushed $newtag"
+
   docker:
     name: Docker image (GHCR)
     runs-on: ubuntu-latest
+    needs: [version]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -28,17 +98,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # On a release/tag -> :v1.2.3, :1.2.3, :latest ; on a branch -> :main, :sha-xxxx
       - name: Image tags & labels
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
-          flavor: latest=auto
+          flavor: latest=false
           tags: |
-            type=semver,pattern=v{{version}}
-            type=semver,pattern={{version}}
-            type=ref,event=branch
+            type=raw,value=${{ needs.version.outputs.version }},enable=${{ needs.version.outputs.released == 'true' }}
+            type=raw,value=v${{ needs.version.outputs.version }},enable=${{ needs.version.outputs.released == 'true' }}
+            type=raw,value=latest,enable=${{ needs.version.outputs.released == 'true' }}
+            type=ref,event=pr
             type=sha
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -59,7 +129,7 @@ jobs:
       - name: Install PyInstaller
         run: pip install pyinstaller
       - name: Build NetScanner.exe
-        run: pyinstaller --onefile --name NetScanner --console --add-data "ui.html;." netscanner.py
+        run: pyinstaller --onefile --name NetScanner --console --add-data "ui.html;." --add-data "openapi.yaml;." --hidden-import netscanner_mcp --hidden-import netscanner netscanner.py
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,15 +137,23 @@ jobs:
           path: dist/NetScanner.exe
           if-no-files-found: error
 
-      # When a release is published (or a version tag is pushed), build the asset
-      # list + notes that tell users exactly which GHCR image/tag to pull.
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    needs: [version, docker, windows-exe]
+    if: needs.version.outputs.released == 'true'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: NetScanner-windows-exe
+          path: dist
       - name: Prepare release assets & notes
-        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         shell: bash
+        env:
+          VER: ${{ needs.version.outputs.tag }}
         run: |
           IMG="ghcr.io/${GITHUB_REPOSITORY,,}"
-          VER="${GITHUB_REF_NAME}"
-          printf 'NetScanner Docker image (GitHub Container Registry)\n\nPull:\n  docker pull %s:%s\n  docker pull %s:latest\n\nRun (NAS/server, host networking required):\n  docker run -d --name netscanner --network host --cap-add NET_RAW --cap-add NET_ADMIN -v "$PWD/netscanner-data:/data" --restart unless-stopped %s:%s\n' "$IMG" "$VER" "$IMG" "$IMG" "$VER" > docker-image.txt
+          printf 'NetScanner Docker image (GitHub Container Registry)\n\nPull:\n  docker pull %s:%s\n  docker pull %s:latest\n\nRun (NAS/server, host networking required):\n  docker run -d --name netscanner --network host --cap-add NET_RAW -v "$PWD/netscanner-data:/data" --restart unless-stopped %s:%s\n' "$IMG" "$VER" "$IMG" "$IMG" "$VER" > docker-image.txt
           {
             echo "### Docker image (GHCR)"
             echo ""
@@ -86,16 +164,17 @@ jobs:
             echo ""
             echo "Run on a NAS/server (host networking required):"
             echo '```'
-            echo "docker run -d --name netscanner --network host --cap-add NET_RAW --cap-add NET_ADMIN -v \"\$PWD/netscanner-data:/data\" --restart unless-stopped ${IMG}:${VER}"
+            echo "docker run -d --name netscanner --network host --cap-add NET_RAW -v \"\$PWD/netscanner-data:/data\" --restart unless-stopped ${IMG}:${VER}"
             echo '```'
             echo ""
             echo "### Windows"
             echo "Download **NetScanner.exe** from the assets below (unsigned — SmartScreen may warn on first run)."
           } > release_notes.md
-      - name: Publish release (attach exe + docker-image.txt, append pull notes)
-        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: NetScanner ${{ needs.version.outputs.tag }}
           files: |
             dist/NetScanner.exe
             docker-image.txt

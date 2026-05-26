@@ -20,10 +20,13 @@ services:
       - NETSCANNER_HOST=0.0.0.0
       - NETSCANNER_PORT=8765    # change if 8765 is taken on the NAS
       - NETSCANNER_NO_BROWSER=1
-      # --- Optional: lock down access (dashboard + API + MCP) ---
-      # - NETSCANNER_USER=admin                   # dashboard login user (default admin)
-      # - NETSCANNER_PASS=change-me               # set a password to REQUIRE login (turns auth on)
-      # - NETSCANNER_TRUST_LOCALHOST=1            # 1=skip auth for 127.0.0.1; set 0 behind a same-host reverse proxy
+      # Auth is ON by default: first launch creates admin/admin (persisted in the
+      # /data volume as auth.json). Change it under Settings in the dashboard.
+      # --- Optional access tweaks ---
+      # - NETSCANNER_USER=admin                   # seed a different admin username on first launch
+      # - NETSCANNER_PASS=change-me               # seed/override the admin password (also a recovery login)
+      # - NETSCANNER_TRUST_LOCALHOST=0            # 0=prompt everywhere (default); 1=skip auth for 127.0.0.1
+      # - NETSCANNER_OPEN=0                        # 1=disable auth entirely (trusted segment only)
       # - NETSCANNER_TOKEN=change-me              # legacy static bearer token (or create tokens in the UI)
       # --- Optional: proactive alerts ---
       # - NETSCANNER_WEBHOOK=https://hooks.example.com/netscanner
