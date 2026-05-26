@@ -1,5 +1,5 @@
-netscanner_data/
-netscanner-data/
+netryx_data/
+netryx-data/
 __pycache__/
 *.pyc
 *.log

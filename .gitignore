@@ -1,13 +1,13 @@
 # ───────────────────────────────────────────────────────────────────────────
-#  NetScanner — local data.  NEVER COMMIT THIS.
+#  Netryx — local data.  NEVER COMMIT THIS.
 #  These files contain your real network inventory: IP addresses, MAC
 #  addresses, hostnames, device names/notes, vendor info and full scan
 #  history. Keeping them out of git is the entire point of this section.
 # ───────────────────────────────────────────────────────────────────────────
-netscanner_data/
-netscanner-data/
-**/netscanner_data/
-**/netscanner-data/
+netryx_data/
+netryx-data/
+**/netryx_data/
+**/netryx-data/
 history/
 scan_*.json
 devices.json

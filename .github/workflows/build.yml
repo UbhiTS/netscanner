@@ -128,13 +128,13 @@ jobs:
           python-version: "3.12"
       - name: Install PyInstaller
         run: pip install pyinstaller
-      - name: Build NetScanner.exe
-        run: pyinstaller --onefile --name NetScanner --console --add-data "ui.html;." --add-data "openapi.yaml;." --hidden-import netscanner_mcp --hidden-import netscanner netscanner.py
+      - name: Build Netryx.exe
+        run: pyinstaller --onefile --name Netryx --console --add-data "ui.html;." --add-data "openapi.yaml;." --hidden-import netryx_mcp --hidden-import netryx netryx.py
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NetScanner-windows-exe
-          path: dist/NetScanner.exe
+          name: Netryx-windows-exe
+          path: dist/Netryx.exe
           if-no-files-found: error
 
   release:
@@ -145,7 +145,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: NetScanner-windows-exe
+          name: Netryx-windows-exe
           path: dist
       - name: Prepare release assets & notes
         shell: bash
@@ -153,7 +153,7 @@ jobs:
           VER: ${{ needs.version.outputs.tag }}
         run: |
           IMG="ghcr.io/${GITHUB_REPOSITORY,,}"
-          printf 'NetScanner Docker image (GitHub Container Registry)\n\nPull:\n  docker pull %s:%s\n  docker pull %s:latest\n\nRun (NAS/server, host networking required):\n  docker run -d --name netscanner --network host --cap-add NET_RAW -v "$PWD/netscanner-data:/data" --restart unless-stopped %s:%s\n' "$IMG" "$VER" "$IMG" "$IMG" "$VER" > docker-image.txt
+          printf 'Netryx Docker image (GitHub Container Registry)\n\nPull:\n  docker pull %s:%s\n  docker pull %s:latest\n\nRun (NAS/server, host networking required):\n  docker run -d --name netryx --network host --cap-add NET_RAW -v "$PWD/netryx-data:/data" --restart unless-stopped %s:%s\n' "$IMG" "$VER" "$IMG" "$IMG" "$VER" > docker-image.txt
           {
             echo "### Docker image (GHCR)"
             echo ""
@@ -164,19 +164,19 @@ jobs:
             echo ""
             echo "Run on a NAS/server (host networking required):"
             echo '```'
-            echo "docker run -d --name netscanner --network host --cap-add NET_RAW -v \"\$PWD/netscanner-data:/data\" --restart unless-stopped ${IMG}:${VER}"
+            echo "docker run -d --name netryx --network host --cap-add NET_RAW -v \"\$PWD/netryx-data:/data\" --restart unless-stopped ${IMG}:${VER}"
             echo '```'
             echo ""
             echo "### Windows"
-            echo "Download **NetScanner.exe** from the assets below (unsigned — SmartScreen may warn on first run)."
+            echo "Download **Netryx.exe** from the assets below (unsigned — SmartScreen may warn on first run)."
           } > release_notes.md
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: NetScanner ${{ needs.version.outputs.tag }}
+          name: Netryx ${{ needs.version.outputs.tag }}
           files: |
-            dist/NetScanner.exe
+            dist/Netryx.exe
             docker-image.txt
           body_path: release_notes.md
           append_body: true

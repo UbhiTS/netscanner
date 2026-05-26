@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NetScanner — Signal Cartography</title>
+<title>Netryx — Signal Cartography</title>
 <style>
 :root{
   --bg:#080b12; --bg2:#0b1019; --panel:#0d1320; --panel2:#111a2b; --raise:#16223a;
@@ -259,7 +259,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
       <circle cx="28" cy="31" r="1.7" fill="#49d8f2"/>
     </svg>
     <div>
-      <h1>NETSCANNER</h1>
+      <h1>NETRYX</h1>
       <div class="tag">Signal Cartography</div>
     </div>
     <div class="env" id="env">locating network…</div>
@@ -495,7 +495,7 @@ function updateSecWarn(auth){
   const el=document.getElementById('secwarn'); if(!el)return;
   if(auth&&auth.enabled===false){
     el.style.display='flex';
-    el.innerHTML='<span>⚠</span><span><b>Auth disabled.</b> NETSCANNER_OPEN is set — the dashboard, API and MCP are open to anyone who can reach this server.</span>';
+    el.innerHTML='<span>⚠</span><span><b>Auth disabled.</b> NETRYX_OPEN is set — the dashboard, API and MCP are open to anyone who can reach this server.</span>';
   }else if(auth&&auth.default_creds){
     el.style.display='flex';
     el.innerHTML='<span>⚠</span><span><b>Default credentials.</b> You\'re still using <span class="mono">admin / admin</span>. Change them in <a href="#" onclick="setView(\'settings\');return false" style="color:#ffd98a">Settings</a>.</span>';
@@ -1216,7 +1216,7 @@ function notifyNew(n,np){
   if(document.getElementById('notify').checked&&('Notification'in window)&&Notification.permission==='granted'){
     let body=n+' new device'+(n===1?'':'s')+' joined your network.';
     if(np>0)body+=' '+np+' new open port'+(np===1?'':'s')+'.';
-    try{new Notification('NetScanner',{body:body});}catch(e){}
+    try{new Notification('Netryx',{body:body});}catch(e){}
   }
 }
 
@@ -1266,7 +1266,7 @@ async function renderEvents(){
     html+='<div class="secrow" style="margin-top:14px"><button class="sm" onclick="setBaseline()">Re-approve current</button>'+
       '<button class="sm ghost" onclick="clearBaseline()">Clear baseline</button></div>';
   }else{
-    html+='<div class="sub">No baseline yet. Approve the devices on your network as known-good, then NetScanner flags anything unexpected — new devices or newly-open ports — on every later scan, and can push alerts to a webhook or MQTT.</div>';
+    html+='<div class="sub">No baseline yet. Approve the devices on your network as known-good, then Netryx flags anything unexpected — new devices or newly-open ports — on every later scan, and can push alerts to a webhook or MQTT.</div>';
     html+='<div class="secrow"><button class="sm primary" onclick="setBaseline()">Set current devices as baseline</button></div>';
     if(!devices.length)html+='<p class="hint" style="margin-top:10px">Run a scan first — then come back here to approve it.</p>';
   }
@@ -1310,7 +1310,7 @@ async function renderSettings(){
   const mcpUrl=(location.origin||'')+'/mcp';
   let html='';
   html+='<div class="seccard"><h3>Access control</h3>'+
-    '<div class="sub">Login protects the dashboard, the API and the MCP endpoint. Set <span class="mono">NETSCANNER_OPEN=1</span> to run fully open on a trusted segment.</div>'+
+    '<div class="sub">Login protects the dashboard, the API and the MCP endpoint. Set <span class="mono">NETRYX_OPEN=1</span> to run fully open on a trusted segment.</div>'+
     '<div class="bigstat">'+
       '<div class="x"><b class="'+(auth.enabled===false?'tier-high':'tier-none')+'" style="font-size:17px">'+(auth.enabled===false?'OFF':'ON')+'</b><span>Auth</span></div>'+
       '<div class="x"><b style="font-size:17px">'+esc(auth.username||'admin')+'</b><span>Admin user</span></div>'+
@@ -1319,7 +1319,7 @@ async function renderSettings(){
     (auth.default_creds?'<p class="hint" style="color:#f0c674;margin-top:10px">⚠ Still using the default admin / admin — set a new password below.</p>':'')+
   '</div>';
   html+='<div class="seccard"><h3>Admin login</h3>'+
-    '<div class="sub">Change the dashboard username and password. Stored hashed in the data volume, so it survives restarts.'+(auth.trust_localhost?' Localhost is currently trusted (no prompt); set NETSCANNER_TRUST_LOCALHOST=0 to require login locally too.':'')+'</div>'+
+    '<div class="sub">Change the dashboard username and password. Stored hashed in the data volume, so it survives restarts.'+(auth.trust_localhost?' Localhost is currently trusted (no prompt); set NETRYX_TRUST_LOCALHOST=0 to require login locally too.':'')+'</div>'+
     '<div class="tokform"><input type="text" id="adm-user" placeholder="username" value="'+esc(auth.username||'admin')+'">'+
      '<input type="password" id="adm-cur" placeholder="current password" autocomplete="off">'+
      '<input type="password" id="adm-new" placeholder="new password" autocomplete="off">'+

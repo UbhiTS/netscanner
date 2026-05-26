@@ -1,6 +1,6 @@
 @echo off
 REM ===================================================================
-REM  NetScanner launcher (Windows)
+REM  Netryx launcher (Windows)
 REM  Double-click this file to start the scanner. It will open in your
 REM  browser automatically. Requires Python 3.8+ (no extra packages).
 REM ===================================================================
@@ -10,13 +10,13 @@ cd /d "%~dp0"
 REM Prefer the official "py" launcher, fall back to "python".
 where py >nul 2>nul
 if %errorlevel%==0 (
-    py netscanner.py %*
+    py netryx.py %*
     goto :end
 )
 
 where python >nul 2>nul
 if %errorlevel%==0 (
-    python netscanner.py %*
+    python netryx.py %*
     goto :end
 )
 

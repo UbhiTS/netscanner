@@ -1,4 +1,4 @@
-# NetScanner on Docker (ideal for a NAS).
+# Netryx on Docker (ideal for a NAS).
 #
 #   docker compose up -d --build
 #   then open  http://<your-NAS-IP>:8765
@@ -8,32 +8,32 @@
 # ping sweep visibility, no mDNS/SNMP). network_mode: host fixes that.
 
 services:
-  netscanner:
+  netryx:
     build: .
-    image: netscanner:latest
-    container_name: netscanner
+    image: netryx:latest
+    container_name: netryx
     network_mode: host          # REQUIRED — see your real LAN. Do not change to bridge.
     cap_add:
       - NET_RAW                 # ICMP ping only; not required (TCP discovery works without it).
                                 # No privileged mode needed.
     environment:
-      - NETSCANNER_HOST=0.0.0.0
-      - NETSCANNER_PORT=8765    # change if 8765 is taken on the NAS
-      - NETSCANNER_NO_BROWSER=1
+      - NETRYX_HOST=0.0.0.0
+      - NETRYX_PORT=8765    # change if 8765 is taken on the NAS
+      - NETRYX_NO_BROWSER=1
       # Auth is ON by default: first launch creates admin/admin (persisted in the
       # /data volume as auth.json). Change it under Settings in the dashboard.
       # --- Optional access tweaks ---
-      # - NETSCANNER_USER=admin                   # seed a different admin username on first launch
-      # - NETSCANNER_PASS=change-me               # seed/override the admin password (also a recovery login)
-      # - NETSCANNER_TRUST_LOCALHOST=0            # 0=prompt everywhere (default); 1=skip auth for 127.0.0.1
-      # - NETSCANNER_OPEN=0                        # 1=disable auth entirely (trusted segment only)
-      # - NETSCANNER_TOKEN=change-me              # legacy static bearer token (or create tokens in the UI)
+      # - NETRYX_USER=admin                   # seed a different admin username on first launch
+      # - NETRYX_PASS=change-me               # seed/override the admin password (also a recovery login)
+      # - NETRYX_TRUST_LOCALHOST=0            # 0=prompt everywhere (default); 1=skip auth for 127.0.0.1
+      # - NETRYX_OPEN=0                        # 1=disable auth entirely (trusted segment only)
+      # - NETRYX_TOKEN=change-me              # legacy static bearer token (or create tokens in the UI)
       # --- Optional: proactive alerts ---
-      # - NETSCANNER_WEBHOOK=https://hooks.example.com/netscanner
-      # - NETSCANNER_MQTT=192.168.1.10:1883       # broker host or host:port
-      # - NETSCANNER_MQTT_TOPIC=netscanner/events
-      # - NETSCANNER_MQTT_USER=user
-      # - NETSCANNER_MQTT_PASS=pass
+      # - NETRYX_WEBHOOK=https://hooks.example.com/netryx
+      # - NETRYX_MQTT=192.168.1.10:1883       # broker host or host:port
+      # - NETRYX_MQTT_TOPIC=netryx/events
+      # - NETRYX_MQTT_USER=user
+      # - NETRYX_MQTT_PASS=pass
     volumes:
-      - ./netscanner-data:/data # history, names/notes, vendor DB, baseline, events
+      - ./netryx-data:/data # history, names/notes, vendor DB, baseline, events
     restart: unless-stopped

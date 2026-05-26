@@ -1,13 +1,13 @@
 openapi: "3.0.3"
 info:
-  title: "NetScanner API"
+  title: "Netryx API"
   version: "1.0.0"
   description: "Local network scanner & discovery engine. Discovers devices, ports and services, assesses exposure, tracks a known-good baseline, and exposes an MCP endpoint for AI agents. All data stays on the host."
   license:
     name: "MIT"
 servers:
 - url: "/"
-  description: "This NetScanner instance"
+  description: "This Netryx instance"
 tags:
 - name: "discovery"
   description: "Scan the network and inspect results"
@@ -28,7 +28,7 @@ components:
     basicAuth:
       type: "http"
       scheme: "basic"
-      description: "Admin username/password (NETSCANNER_USER / NETSCANNER_PASS)."
+      description: "Admin username/password (NETRYX_USER / NETRYX_PASS)."
 security:
 - bearerAuth: []
 - basicAuth: []
@@ -464,7 +464,7 @@ paths:
       tags:
       - "agent"
       summary: "Model Context Protocol endpoint (JSON-RPC 2.0)"
-      description: "Streamable-HTTP MCP transport. Methods: initialize, tools/list, tools/call, ping. Gated by NETSCANNER_TOKEN when set."
+      description: "Streamable-HTTP MCP transport. Methods: initialize, tools/list, tools/call, ping. Gated by NETRYX_TOKEN when set."
       security:
       - bearerAuth: []
       requestBody:

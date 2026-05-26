@@ -1,4 +1,4 @@
-# NetScanner — self-contained container image.
+# Netryx — self-contained container image.
 # Pure-stdlib Python app; the only OS deps are the tools it shells out to
 # (ping, ip neigh/route, arp). Build small and run with HOST networking so the
 # container can actually see your LAN, ARP table, mDNS and SNMP traffic.
@@ -10,19 +10,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-# netscanner_mcp.py is required for the /mcp endpoint; openapi.yaml is optional
+# netryx_mcp.py is required for the /mcp endpoint; openapi.yaml is optional
 # (the spec is also generated dynamically) but handy to ship.
-COPY netscanner.py netscanner_mcp.py ui.html openapi.yaml /app/
+COPY netryx.py netryx_mcp.py ui.html openapi.yaml /app/
 
 # Scan history, device names/notes, vendor DB, baseline and events persist here.
-ENV NETSCANNER_DATA=/data \
-    NETSCANNER_HOST=0.0.0.0 \
-    NETSCANNER_PORT=8765 \
-    NETSCANNER_NO_BROWSER=1
+ENV NETRYX_DATA=/data \
+    NETRYX_HOST=0.0.0.0 \
+    NETRYX_PORT=8765 \
+    NETRYX_NO_BROWSER=1
 
 VOLUME ["/data"]
 EXPOSE 8765
 
 # Note: with `--network host` (recommended) the EXPOSE above is informational;
 # the app binds directly to the host's port 8765.
-CMD ["python", "netscanner.py"]
+CMD ["python", "netryx.py"]

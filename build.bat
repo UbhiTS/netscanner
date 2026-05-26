@@ -1,9 +1,9 @@
 @echo off
 REM ===================================================================
-REM  Build NetScanner into a single standalone Windows .exe
+REM  Build Netryx into a single standalone Windows .exe
 REM
 REM  Run this ONCE on your Windows machine. It produces:
-REM      dist\NetScanner.exe
+REM      dist\Netryx.exe
 REM  which you can copy anywhere and run by double-clicking - no Python
 REM  required on that machine. The UI, the OpenAPI spec and the MCP
 REM  server module are all bundled inside.
@@ -20,20 +20,20 @@ echo Installing PyInstaller (if needed)...
 %PY% -m pip install --upgrade pyinstaller || goto :fail
 
 echo.
-echo Building NetScanner.exe ...
+echo Building Netryx.exe ...
 REM --add-data bundles files into the exe (Windows uses ; as the separator).
-REM --hidden-import pulls in the MCP server, which netscanner.py imports lazily.
-%PY% -m PyInstaller --onefile --name NetScanner --console ^
+REM --hidden-import pulls in the MCP server, which netryx.py imports lazily.
+%PY% -m PyInstaller --onefile --name Netryx --console ^
     --add-data "ui.html;." ^
     --add-data "openapi.yaml;." ^
-    --hidden-import netscanner_mcp ^
-    --hidden-import netscanner ^
-    netscanner.py || goto :fail
+    --hidden-import netryx_mcp ^
+    --hidden-import netryx ^
+    netryx.py || goto :fail
 
 echo.
 echo ===================================================================
 echo  Done!  Your standalone app is here:
-echo     %~dp0dist\NetScanner.exe
+echo     %~dp0dist\Netryx.exe
 echo ===================================================================
 echo.
 pause
