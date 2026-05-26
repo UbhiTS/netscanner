@@ -2724,7 +2724,8 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path, qs = parsed.path, parse_qs(parsed.query)
         if path == "/login":
-            return self._send(200, login_page(), "text/html; charset=utf-8")
+            return self._send(200, login_page(), "text/html; charset=utf-8",
+                              extra={"Cache-Control": "no-store"})
         if path == "/logout":
             drop_session(self._cookie("ns_session"))
             return self._send(302, b"", extra={"Location": "/login",
@@ -2732,7 +2733,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authed():
             return self._deny()
         if path in ("/", "/index.html"):
-            return self._send(200, load_ui(), "text/html; charset=utf-8")
+            return self._send(200, load_ui(), "text/html; charset=utf-8",
+                              extra={"Cache-Control": "no-store"})
         if path == "/openapi.json":
             return self._send(200, json.dumps(openapi_spec(), indent=2), "application/json")
         if path in ("/openapi.yaml", "/openapi.yml"):
