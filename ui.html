@@ -196,6 +196,34 @@ textarea.ceinput{min-height:58px;resize:vertical}
 .targets{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .targets .tg{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
 .targets .tg b{color:var(--cyan);font-weight:500}
+/* baseline / events / security panel */
+.rightgrp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.navbtn.active{background:linear-gradient(135deg,var(--cyan),var(--blue));border:none;color:#04121c;font-weight:700}
+.blchip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);font-family:var(--mono);
+  padding:6px 11px;border:1px solid var(--border);border-radius:9px;background:var(--panel2);cursor:pointer;white-space:nowrap}
+.blchip:hover{border-color:#2b3c5c}
+.blchip .d{width:7px;height:7px;border-radius:50%;background:var(--faint);box-shadow:0 0 7px currentColor}
+.blchip .d.on{background:var(--green);color:var(--green)}
+.blchip .d.warn{background:var(--red);color:var(--red)}
+.evbadge{display:inline-flex;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--red);
+  color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;margin-left:6px}
+.badge.rogue{background:rgba(240,113,107,.18);color:#ff9a93;border-color:rgba(240,113,107,.55)}
+.badge.drift{background:rgba(236,178,74,.16);color:#f0c674;border-color:rgba(236,178,74,.45)}
+.chip.rogueport,.pill.rogueport{background:rgba(240,113,107,.18)!important;border-color:rgba(240,113,107,.6)!important;color:#ff9a93!important}
+.card.isrogue{border-color:rgba(240,113,107,.55)!important;box-shadow:0 0 0 1px rgba(240,113,107,.3)}
+.secpanel{display:grid;gap:14px}
+.seccard{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.seccard h3{margin:0 0 4px;font-size:15px}
+.seccard .sub{color:var(--muted);font-size:12.5px;margin-bottom:12px;line-height:1.5}
+.secrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bigstat{display:flex;gap:26px;flex-wrap:wrap;margin:8px 0 2px}
+.bigstat .x{display:flex;flex-direction:column}
+.bigstat .x b{font-size:23px;font-family:var(--mono);font-weight:800;line-height:1.1}
+.bigstat .x span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+.tier-critical{color:#ff6a60}.tier-high{color:#f0716b}.tier-medium{color:#ecb24a}.tier-low{color:#9d8cff}.tier-none{color:var(--muted)}
+.evfeed .kind{font-family:var(--mono);font-size:10.5px;padding:2px 9px;border-radius:20px;border:1px solid var(--border)}
+.evfeed .kind.rogue_device{background:rgba(240,113,107,.16);color:#ff9a93;border-color:rgba(240,113,107,.5)}
+.evfeed .kind.new_open_port{background:rgba(236,178,74,.16);color:#f0c674;border-color:rgba(236,178,74,.45)}
 </style>
 </head>
 <body>
@@ -248,7 +276,11 @@ textarea.ceinput{min-height:58px;resize:vertical}
         </select>
         <label class="chk" title="Show a desktop notification when new devices appear"><input type="checkbox" id="notify" onchange="toggleNotify()"> Desktop alerts</label>
       </div>
-      <button id="v-hist" class="ghost histbtn" onclick="setView('hist')">History</button>
+      <div class="rightgrp">
+        <span class="blchip" id="blchip" onclick="setView('events')" title="Known-good baseline status — click to manage"><span class="d" id="bldot"></span><span id="bltxt">Baseline: off</span></span>
+        <button id="v-events" class="ghost navbtn" onclick="setView('events')">Events<span class="evbadge" id="evbadge" style="display:none">0</span></button>
+        <button id="v-hist" class="ghost navbtn" onclick="setView('hist')">History</button>
+      </div>
     </div>
     <div class="adv">
       <label class="chk" title="Discover Chromecast / AirPlay / printers / Apple names"><input type="checkbox" id="usemdns" checked> mDNS / Bonjour</label>
@@ -335,6 +367,9 @@ textarea.ceinput{min-height:58px;resize:vertical}
       <thead><tr><th>When</th><th>Subnet</th><th>Devices</th><th></th></tr></thead>
       <tbody id="histbody"></tbody></table></div>
   </div>
+  <div id="view-events" style="display:none">
+    <div class="secpanel" id="events-body"></div>
+  </div>
 
   <div class="empty" id="empty">
     <svg width="64" height="64" viewBox="0 0 40 40" fill="none">
@@ -356,6 +391,7 @@ let sortCol='ip', sortDir=1;       // 1 = ascending, -1 = descending
 let editingIp=null;                // device whose card is in inline-edit mode
 let scanning=false;
 let etaKey='', etaSamples=[];
+let baseline=null, ROGUE=new Set(), DRIFT=new Map();
 
 const TYPE_META={
   "Router / Gateway":{c:"#ecb24a"},"Network device":{c:"#ecb24a"},
@@ -433,6 +469,69 @@ function updateOui(o){
   if(o.extended>0){led.classList.add('on');txt.textContent='Vendor DB: '+o.extended.toLocaleString()+' OUIs';
     document.getElementById('ouibtn').textContent='Update';}
   else{led.classList.remove('on');txt.textContent='Vendor DB: built-in ('+o.builtin+')';}
+}
+
+function dkeyOf(d){return d.mac||d.ip;}
+function applyBaseline(b){
+  baseline=b||null; ROGUE=new Set(); DRIFT=new Map();
+  const diff=b&&b.diff;
+  if(diff){
+    (diff.rogue_devices||[]).forEach(r=>ROGUE.add(r.key));
+    (diff.new_ports||[]).forEach(p=>{if(!DRIFT.has(p.key))DRIFT.set(p.key,new Set());DRIFT.get(p.key).add(p.port);});
+  }
+  updateBaselineChip(); updateEventsBadge();
+}
+function driftPortCount(){let n=0;DRIFT.forEach(s=>n+=s.size);return n;}
+function updateBaselineChip(){
+  const dot=document.getElementById('bldot'), txt=document.getElementById('bltxt');
+  if(!dot)return;
+  if(!baseline||!baseline.size){dot.className='d';txt.textContent='Baseline: off';return;}
+  const r=ROGUE.size, dp=driftPortCount();
+  if(r||dp){dot.className='d warn';txt.textContent='Baseline: '+r+' rogue'+(dp?(' · '+dp+' port'+(dp===1?'':'s')):'');}
+  else{dot.className='d on';txt.textContent='Baseline: '+baseline.size+' OK';}
+}
+function updateEventsBadge(){
+  const b=document.getElementById('evbadge'); if(!b)return;
+  const n=ROGUE.size+driftPortCount();
+  if(n>0){b.textContent=n;b.style.display='';}else{b.style.display='none';}
+}
+function baselineFlags(d){const k=dkeyOf(d);return {rogue:ROGUE.has(k), ports:DRIFT.get(k)||null};}
+async function loadBaseline(announce){
+  try{
+    const b=await api('/api/baseline');
+    applyBaseline(b);
+    if(view==='table'||view==='cards')render();
+    if(announce&&b&&b.size){
+      const r=ROGUE.size, dp=driftPortCount();
+      if(r>0)toast(r+' unapproved device'+(r===1?'':'s')+' vs baseline','red');
+      if(dp>0)toast(dp+' unapproved open port'+(dp===1?'':'s')+' vs baseline','amber');
+    }
+  }catch(e){}
+}
+async function setBaseline(){
+  if(!devices.length){toast('Run a scan first, then set the baseline','amber');return;}
+  try{
+    const r=await api('/api/baseline',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set'})});
+    toast('Baseline saved — '+r.size+' device'+(r.size===1?'':'s')+' marked known-good','green');
+    await loadBaseline(false);
+    if(view==='events')renderEvents();
+  }catch(e){toast('Could not set baseline: '+e.message,'red');}
+}
+async function clearBaseline(){
+  try{
+    await api('/api/baseline',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'clear'})});
+    toast('Baseline cleared','amber');
+    await loadBaseline(false);
+    if(view==='events')renderEvents();
+  }catch(e){toast('Could not clear baseline: '+e.message,'red');}
+}
+function relTime(ts){
+  if(!ts)return 'just now';
+  const s=Math.max(0,Math.floor(Date.now()/1000-ts));
+  if(s<60)return 'just now';
+  const m=Math.floor(s/60); if(m<60)return m+' min ago';
+  const h=Math.floor(m/60); if(h<24)return h+'h ago';
+  return Math.floor(h/24)+'d ago';
 }
 
 async function startScan(){
@@ -517,6 +616,7 @@ async function poll(){
         if(np>0){toast(np+' newly-open port'+(np===1?'':'s')+' since last scan','green');}
         if(nd>0){notifyNew(nd,np);}
       }
+      loadBaseline(!job.stopped);
     }
   }catch(e){setScanning(false);toast('Lost connection to the scanner engine','red');}
 }
@@ -575,6 +675,7 @@ function renderCards(){
 }
 function cardMarkup(d){
   const col=typeColor(d.device_type);
+  const _bf=baselineFlags(d);
   const badges=[];
   if(d.new)badges.push('<span class="badge new">NEW</span>');
   else if(d.changed)badges.push('<span class="badge chg">+PORTS</span>');
@@ -583,17 +684,20 @@ function cardMarkup(d){
   if(d.is_dns)badges.push('<span class="badge dns">DNS</span>');
   if(d.random_mac)badges.push('<span class="badge rnd" title="Locally-administered (randomized) MAC — typically a phone with privacy MAC enabled">PRIVATE MAC</span>');
   if(d.device_type)badges.push('<span class="badge">'+esc(d.device_type)+'</span>');
+  if(_bf.rogue)badges.unshift('<span class="badge rogue" title="Not in your known-good baseline">ROGUE</span>');
+  else if(_bf.ports)badges.unshift('<span class="badge drift" title="Open ports not in your baseline">PORT DRIFT</span>');
   const svc=(d.mdns_services||[]).map(s=>'<span class="s">'+esc(s)+'</span>').join('');
   const ports=(d.ports||[]).map(p=>{
     const fresh=p.new?' fresh':'';
+    const rp=(_bf.ports&&_bf.ports.has(p.port))?' rogueport':'';
     const tip=[];
     if(p.banner)tip.push(p.banner);
     if(p.title)tip.push('“'+p.title+'”');
     if(p.tls)tip.push((p.tls.proto||'TLS')+(p.tls.cipher?' '+p.tls.cipher:'')+(p.tls.cn?' · CN='+p.tls.cn:'')+(p.tls.expires?' · exp '+p.tls.expires:'')+(p.tls.self_signed?' · self-signed':''));
     const tt=tip.length?' title="'+esc(tip.join(' | '))+'"':'';
     return p.url
-      ?'<span class="chip web'+fresh+'"'+tt+'><a href="'+esc(p.url)+'" target="_blank" rel="noopener">'+p.port+' '+esc(p.service)+' ↗</a></span>'
-      :'<span class="chip'+fresh+'"'+tt+'>'+p.port+' '+esc(p.service)+'</span>';
+      ?'<span class="chip web'+fresh+rp+'"'+tt+'><a href="'+esc(p.url)+'" target="_blank" rel="noopener">'+p.port+' '+esc(p.service)+' ↗</a></span>'
+      :'<span class="chip'+fresh+rp+'"'+tt+'>'+p.port+' '+esc(p.service)+'</span>';
   }).join('');
   const up=(d.upnp||{}), sn=(d.snmp||{}), nb=(d.netbios||{});
   const maker=(up.manufacturer && (!d.vendor || up.manufacturer.toLowerCase()!==d.vendor.toLowerCase()))?up.manufacturer:'';
@@ -602,7 +706,7 @@ function cardMarkup(d){
   const tlsPort=(d.ports||[]).find(p=>p.tls);
   const tlsTxt=tlsPort?((tlsPort.tls.proto||'TLS')+(tlsPort.tls.cn?' · CN='+tlsPort.tls.cn:'')+(tlsPort.tls.expires?' · expires '+tlsPort.tls.expires:'')+(tlsPort.tls.self_signed?' · self-signed':'')):'';
   const seen=d.seen_count?('seen '+d.seen_count+'×'+(d.first_seen?', since '+fmtDate(d.first_seen):'')):'';
-  return '<div class="card'+(d.new?' isnew':'')+'" id="card-'+esc(d.ip)+'" style="--accent:'+col+'">'+
+  return '<div class="card'+(d.new?' isnew':'')+(_bf.rogue?' isrogue':'')+'" id="card-'+esc(d.ip)+'" style="--accent:'+col+'">'+
     '<div class="glowedge"></div>'+
     '<div class="top"><div class="idn"><div class="ico">'+icon(d.device_type)+'</div>'+
       '<div style="min-width:0"><div class="nm">'+esc(dispName(d))+'</div><div class="ipv">'+esc(d.ip)+'</div></div></div>'+
@@ -659,15 +763,15 @@ function renderTable(){
     '<th onclick="headerSort(\'mac\')">MAC'+sortArrow('mac')+'</th>'+
     '<th onclick="headerSort(\'os\')">OS'+sortArrow('os')+'</th>'+
     '<th onclick="headerSort(\'ports\')">Open ports'+sortArrow('ports')+'</th></tr></thead>';
-  const rows=list.map(d=>'<tr onclick="focusCard(\''+esc(d.ip)+'\')" style="cursor:pointer">'+
-    '<td class="mono"><span style="color:'+typeColor(d.device_type)+'">●</span> '+esc(d.ip)+(d.new?' <span class="badge new">NEW</span>':(d.changed?' <span class="badge chg">+PORTS</span>':''))+'</td>'+
+  const rows=list.map(d=>{const _bf=baselineFlags(d);return '<tr onclick="focusCard(\''+esc(d.ip)+'\')" style="cursor:pointer">'+
+    '<td class="mono"><span style="color:'+typeColor(d.device_type)+'">●</span> '+esc(d.ip)+(d.new?' <span class="badge new">NEW</span>':(d.changed?' <span class="badge chg">+PORTS</span>':''))+(_bf.rogue?' <span class="badge rogue">ROGUE</span>':(_bf.ports?' <span class="badge drift">DRIFT</span>':''))+'</td>'+
     '<td>'+esc(dispName(d))+(d.is_gateway?' <span class="badge gw">GW</span>':'')+'</td>'+
     '<td>'+esc(d.device_type||'')+'</td>'+
     '<td>'+esc(d.vendor||'')+'</td>'+
     '<td class="mono" style="font-size:11px">'+esc(d.mac||'')+'</td>'+
     '<td>'+esc(d.os||'')+'</td>'+
-    '<td>'+((d.ports||[]).map(p=>p.url?'<a class="pill web'+(p.new?' fresh':'')+'" href="'+esc(p.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.port+'↗</a>':'<span class="pill'+(p.new?' fresh':'')+'">'+p.port+'</span>').join('')||'<span class="hint">—</span>')+'</td>'+
-    '</tr>').join('');
+    '<td>'+((d.ports||[]).map(p=>{const rp=(_bf.ports&&_bf.ports.has(p.port))?' rogueport':'';return p.url?'<a class="pill web'+(p.new?' fresh':'')+rp+'" href="'+esc(p.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.port+'↗</a>':'<span class="pill'+(p.new?' fresh':'')+rp+'">'+p.port+'</span>';}).join('')||'<span class="hint">—</span>')+'</td>'+
+    '</tr>';}).join('');
   document.getElementById('tbl').innerHTML=head+'<tbody>'+rows+(full.length>CAP?'<tr><td colspan="7" class="hint">Showing '+CAP+' of '+full.length+' rows \u2014 narrow with search / filter</td></tr>':'')+'</tbody>';
 }
 function headerSort(k){
@@ -1050,13 +1154,13 @@ function notifyNew(n,np){
 
 function setView(v){
   view=v;lastKey='';
-  ['cards','table','map','hist'].forEach(x=>{
+  ['cards','table','map','hist','events'].forEach(x=>{
     document.getElementById('view-'+x).style.display=(x===v)?'block':'none';
-    document.getElementById('v-'+x).classList.toggle('active',x===v);
+    const btn=document.getElementById('v-'+x); if(btn)btn.classList.toggle('active',x===v);
   });
-  document.querySelector('.tool').style.visibility=(v!=='hist')?'visible':'hidden';
+  document.querySelector('.tool').style.visibility=(v==='hist'||v==='events')?'hidden':'visible';
   if(v!=='map')stopSim();
-  if(v==='hist')loadHistory();else render();
+  if(v==='hist')loadHistory();else if(v==='events')renderEvents();else render();
 }
 async function loadHistory(){
   try{const items=await api('/api/history');
@@ -1073,9 +1177,63 @@ async function loadScan(file){
     toast('Loaded scan from '+new Date((rec.time||0)*1000).toLocaleString());
   }catch(e){toast('Could not load scan','red');}
 }
+async function renderEvents(){
+  const body=document.getElementById('events-body');
+  body.innerHTML='<p class="hint">Loading…</p>';
+  await loadBaseline(false);
+  let evs=[];
+  try{const r=await api('/api/events?limit=200');evs=r.events||[];}catch(_){}
+  const b=baseline||{}, has=!!b.size;
+  const rogues=ROGUE.size, dp=driftPortCount();
+  const tiers={critical:0,high:0,medium:0,low:0,none:0};
+  devices.forEach(d=>{const t=(d.risk&&d.risk.tier)||'none';tiers[t]=(tiers[t]||0)+1;});
+  let html='<div class="seccard"><h3>Known-good baseline</h3>';
+  if(has){
+    html+='<div class="sub">'+b.size+' approved device'+(b.size===1?'':'s')+' · set '+relTime(b.updated||b.created)+'. Every scan is compared against this snapshot; the first sighting of anything new is logged below and pushed to your webhook/MQTT if configured.</div>';
+    html+='<div class="bigstat">'+
+      '<div class="x"><b class="'+(rogues?'tier-high':'tier-none')+'">'+rogues+'</b><span>Rogue devices</span></div>'+
+      '<div class="x"><b class="'+(dp?'tier-medium':'tier-none')+'">'+dp+'</b><span>Unapproved ports</span></div>'+
+      '<div class="x"><b>'+b.size+'</b><span>Approved</span></div></div>';
+    html+='<div class="secrow" style="margin-top:14px"><button class="sm" onclick="setBaseline()">Re-approve current</button>'+
+      '<button class="sm ghost" onclick="clearBaseline()">Clear baseline</button></div>';
+  }else{
+    html+='<div class="sub">No baseline yet. Approve the devices on your network as known-good, then NetScanner flags anything unexpected — new devices or newly-open ports — on every later scan, and can push alerts to a webhook or MQTT.</div>';
+    html+='<div class="secrow"><button class="sm primary" onclick="setBaseline()">Set current devices as baseline</button></div>';
+    if(!devices.length)html+='<p class="hint" style="margin-top:10px">Run a scan first — then come back here to approve it.</p>';
+  }
+  html+='</div>';
+  if(has&&(rogues||dp)){
+    const diff=b.diff||{};
+    let rows='';
+    (diff.rogue_devices||[]).forEach(r=>{rows+='<tr><td><span class="badge rogue">ROGUE</span></td><td class="mono">'+esc(r.ip)+'</td><td>'+esc(r.name||'')+'</td><td>'+esc(r.vendor||r.device_type||'')+'</td><td class="mono">'+(r.open_ports||[]).join(', ')+'</td></tr>';});
+    (diff.new_ports||[]).forEach(p=>{rows+='<tr><td><span class="badge drift">PORT</span></td><td class="mono">'+esc(p.ip)+'</td><td colspan="2" class="hint">unapproved open port</td><td class="mono">'+p.port+' '+esc(p.service||'')+'</td></tr>';});
+    html+='<div class="seccard"><h3>Flagged against baseline</h3><div class="tablewrap"><table class="dev"><thead><tr><th></th><th>IP</th><th>Name</th><th>Vendor / type</th><th>Ports</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+  html+='<div class="seccard"><h3>Exposure</h3><div class="sub">Devices ranked by open-port risk in the latest scan (Telnet, RDP, SMB, exposed databases, etc.).</div><div class="bigstat">'+
+    '<div class="x"><b class="tier-critical">'+tiers.critical+'</b><span>Critical</span></div>'+
+    '<div class="x"><b class="tier-high">'+tiers.high+'</b><span>High</span></div>'+
+    '<div class="x"><b class="tier-medium">'+tiers.medium+'</b><span>Medium</span></div>'+
+    '<div class="x"><b class="tier-low">'+tiers.low+'</b><span>Low</span></div>'+
+    '<div class="x"><b class="tier-none">'+tiers.none+'</b><span>None</span></div></div></div>';
+  let feed='';
+  if(evs.length){
+    feed=evs.map(e=>{
+      const d=e.data||{}, when=new Date((e.time||0)*1000).toLocaleString();
+      const detail=(e.kind==='rogue_device')
+        ? (esc(d.ip)+(d.name?(' · '+esc(d.name)):'')+(d.vendor?(' · '+esc(d.vendor)):'')+((d.open_ports&&d.open_ports.length)?(' · ports '+esc(d.open_ports.join(','))):''))
+        : (esc(d.ip)+' · '+esc(d.port)+' '+esc(d.service||''));
+      return '<tr><td class="mono" style="font-size:11px">'+esc(when)+'</td><td><span class="kind '+esc(e.kind)+'">'+(e.kind==='rogue_device'?'rogue device':'new port')+'</span></td><td class="mono">'+detail+'</td></tr>';
+    }).join('');
+  }else{
+    feed='<tr><td colspan="3" class="hint">No events yet'+(has?'':' — set a baseline to start detecting changes')+'.</td></tr>';
+  }
+  html+='<div class="seccard evfeed"><h3>Event log</h3><div class="sub">Unexpected devices and ports detected over time, newest first.</div><div class="tablewrap"><table class="dev"><thead><tr><th>When</th><th>Type</th><th>Detail</th></tr></thead><tbody>'+feed+'</tbody></table></div></div>';
+  body.innerHTML=html;
+}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&editingIp)cancelCardEdit();});
 window.addEventListener('resize',()=>{if(view==='map')renderTopo();});
 loadInfo();
+loadBaseline(false);
 </script>
 </body>
 </html>
