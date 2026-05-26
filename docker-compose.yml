@@ -7,6 +7,8 @@
 # virtual network and cannot discover devices on your real LAN (no ARP, no
 # ping sweep visibility, no mDNS/SNMP). network_mode: host fixes that.
 
+name: netryx
+
 services:
   netryx:
     build: .
