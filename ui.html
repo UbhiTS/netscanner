@@ -619,6 +619,16 @@ function copyText(txt){
     navigator.clipboard.writeText(txt).then(ok).catch(legacy);
   }else{ legacy(); }
 }
+const EYE='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.6a3 3 0 004.2 4.2M9.9 5.1A10.4 10.4 0 0112 5c6.5 0 10 7 10 7a17.6 17.6 0 01-3 3.9M6.6 6.6A17.6 17.6 0 002 12s3.5 7 10 7a10.4 10.4 0 003.4-.6"/></svg>';
+function toggleToken(id,btn){
+  const el=document.getElementById('tokval-'+id); if(!el)return;
+  const reveal=el.type==='password';
+  el.type=reveal?'text':'password';
+  btn.innerHTML=reveal?EYE_OFF:EYE;
+  btn.title=reveal?'Hide token':'Show token';
+  if(reveal){el.focus();el.select();}
+}
 
 async function startScan(){
   if(scanning)return;
@@ -1347,7 +1357,7 @@ async function renderSettings(){
   if(toks.length){
     trows=toks.map(t=>'<div class="tokrow"><div class="tokmeta"><div class="nm">'+esc(t.name||'token')+'</div>'+
       '<div class="mm">created '+relTime(t.created)+' · '+(t.last_used?('used '+relTime(t.last_used)):'never used')+' · '+expLabel(t.expires)+'</div>'+
-      '<div class="tokval"><input id="tokval-'+esc(t.id)+'" type="text" readonly value="'+esc(t.token)+'" onclick="this.select()"><button class="sm ghost" onclick="copyText(\''+esc(t.token)+'\')">Copy</button></div></div>'+
+      '<div class="tokval"><input id="tokval-'+esc(t.id)+'" type="password" readonly value="'+esc(t.token)+'" onclick="this.select()"><button class="sm ghost" title="Show token" onclick="toggleToken(\''+esc(t.id)+'\',this)">'+EYE+'</button><button class="sm ghost" onclick="copyText(\''+esc(t.token)+'\')">Copy</button></div></div>'+
       '<div><button class="sm ghost" onclick="deleteTokenUI(\''+esc(t.id)+'\')">Delete</button></div></div>').join('');
   }else{trows='<p class="hint">No API tokens yet. Create one below for your agents or scripts.</p>';}
   html+='<div class="seccard"><h3>API tokens</h3>'+
