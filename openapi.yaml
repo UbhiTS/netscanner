@@ -97,6 +97,16 @@ paths:
                 workers:
                   type: "string"
                   description: "number or 'auto'"
+                source:
+                  type: "string"
+                  enum:
+                  - "manual"
+                  - "monitor"
+                  - "api"
+                  - "schedule"
+                  - "mcp"
+                  - "cli"
+                  description: "Trigger tag recorded in history (default 'api' for token callers). Tells scheduled/manual/monitor/mcp/api scans apart."
       responses:
         "200":
           description: "Job accepted"

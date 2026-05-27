@@ -251,6 +251,14 @@ textarea.ceinput{min-height:58px;resize:vertical}
 .schedopts{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px}
 #sched-slider{accent-color:var(--cyan);height:4px;cursor:pointer}
 .schedopts select,#sched-targets,#sched-profile,#sched-workers{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px}
+.srcbadge{display:inline-block;font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);letter-spacing:.3px}
+.srcbadge.src-manual{color:var(--cyan);border-color:rgba(73,216,242,.4)}
+.srcbadge.src-monitor{color:var(--violet);border-color:rgba(157,140,255,.4)}
+.srcbadge.src-schedule{color:var(--green);border-color:rgba(70,214,160,.4)}
+.srcbadge.src-mcp{color:var(--warm);border-color:rgba(244,213,138,.4)}
+.srcbadge.src-api{color:var(--blue);border-color:rgba(59,130,246,.4)}
+.srcbadge.src-cli{color:#bcd0ee}
+.srcbadge.src-stopped{color:var(--red);border-color:rgba(240,113,107,.4)}
 .snip{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;
   font-family:var(--mono);font-size:11.5px;color:#bcd0ee;white-space:pre-wrap;word-break:break-all;margin-top:6px}
 </style>
@@ -417,7 +425,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
   <div id="view-hist" style="display:none">
     <p class="hint">Every scan is saved locally. Load one to compare against your current view.</p>
     <div class="tablewrap"><table class="dev" id="histtbl">
-      <thead><tr><th>When</th><th>Subnet</th><th>Devices</th><th></th></tr></thead>
+      <thead><tr><th>When</th><th>Trigger</th><th>Subnet</th><th>Devices</th><th></th></tr></thead>
       <tbody id="histbody"></tbody></table></div>
   </div>
   <div id="view-events" style="display:none">
@@ -666,7 +674,7 @@ function toggleToken(id,btn){
   if(reveal){el.focus();el.select();}
 }
 
-async function startScan(){
+async function startScan(source){
   if(scanning)return;
   const subnet=document.getElementById('subnet').value.trim();
   const _err=targetError(subnet);
@@ -680,7 +688,8 @@ async function startScan(){
         port_profile:document.getElementById('profile').value,
         use_mdns:document.getElementById('usemdns').checked,
         use_snmp:document.getElementById('usesnmp').checked,
-        workers:document.getElementById('workers').value})});
+        workers:document.getElementById('workers').value,
+        source:(source==='monitor'?'monitor':'manual')})});
     currentJob=res.job_id; poll();
   }catch(e){toast('Scan failed: '+e.message,'red');setScanning(false);}
 }
@@ -1289,7 +1298,7 @@ function toggleMonitor(){
   if(document.getElementById('monitor').checked){
     const sec=parseInt(document.getElementById('interval').value,10);
     toast('Live monitoring on — re-scanning every '+(sec/60)+' min','green');
-    monitorTimer=setInterval(()=>{if(!scanning)startScan();},sec*1000);
+    monitorTimer=setInterval(()=>{if(!scanning)startScan('monitor');},sec*1000);
   }else toast('Live monitoring off');
 }
 function toggleNotify(){
@@ -1322,13 +1331,21 @@ function setView(v){
   if(v!=='map')stopSim();
   if(v==='hist')loadHistory();else if(v==='events')renderEvents();else if(v==='settings')renderSettings();else if(v==='audit')renderAudit();else render();
 }
+const SRC_LABELS={manual:'Manual',monitor:'Live monitor',schedule:'Scheduled',mcp:'MCP tool',api:'API',cli:'CLI',unknown:'Unknown'};
+function srcBadge(src,status){
+  const s=(src||'unknown').toLowerCase();
+  const label=SRC_LABELS[s]||s;
+  const stopped=(status==='stopped');
+  return '<span class="srcbadge src-'+esc(s)+'">'+esc(label)+'</span>'+
+    (stopped?' <span class="srcbadge src-stopped">stopped</span>':'');
+}
 async function loadHistory(){
   try{const items=await api('/api/history');
     document.getElementById('histbody').innerHTML=items.map(it=>{
       const dt=new Date((it.time||0)*1000).toLocaleString();
-      return '<tr><td>'+esc(dt)+'</td><td class="mono">'+esc(it.subnet||'')+'</td><td>'+it.count+
+      return '<tr><td>'+esc(dt)+'</td><td>'+srcBadge(it.source,it.status)+'</td><td class="mono">'+esc(it.subnet||'')+'</td><td>'+it.count+
         '</td><td><button class="sm ghost" onclick="loadScan(\''+esc(it.file)+'\')">Load</button></td></tr>';
-    }).join('')||'<tr><td colspan="4" class="hint">No history yet.</td></tr>';
+    }).join('')||'<tr><td colspan="5" class="hint">No history yet.</td></tr>';
   }catch(e){toast('Could not load history','red');}
 }
 async function loadScan(file){

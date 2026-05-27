@@ -185,6 +185,7 @@ def tool_scan_network(args):
         use_mdns=bool(args.get("use_mdns", True)),
         use_snmp=bool(args.get("use_snmp", True)),
         req_workers=args.get("workers", "auto"),
+        source="mcp",
     )
     if res.get("error"):
         raise ValueError(res["error"])

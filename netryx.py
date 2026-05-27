@@ -1410,10 +1410,14 @@ def save_seen(seen):
     _save_json(SEEN_FILE, sorted(seen))
 
 
-def save_history(subnet, devices):
+def save_history(subnet, devices, source="unknown", status="complete"):
+    """Persist a scan snapshot. ``source`` records what triggered the scan
+    (manual / monitor / schedule / mcp / api / cli) and ``status`` whether it
+    completed or was stopped — so every scan in history is differentiable."""
     ts = int(time.time())
     _save_json(os.path.join(HISTORY_DIR, "scan_%d.json" % ts),
-               {"time": ts, "subnet": subnet, "count": len(devices), "devices": devices})
+               {"time": ts, "subnet": subnet, "count": len(devices),
+                "source": source or "unknown", "status": status, "devices": devices})
     try:
         files = sorted(f for f in os.listdir(HISTORY_DIR) if f.startswith("scan_"))
         for old in files[:-50]:
@@ -1430,7 +1434,9 @@ def list_history():
                 rec = _load_json(os.path.join(HISTORY_DIR, f), None)
                 if rec:
                     items.append({"file": f, "time": rec.get("time"),
-                                  "subnet": rec.get("subnet"), "count": rec.get("count")})
+                                  "subnet": rec.get("subnet"), "count": rec.get("count"),
+                                  "source": rec.get("source") or "unknown",
+                                  "status": rec.get("status") or "complete"})
     except Exception:
         pass
     items.sort(key=lambda x: x.get("time") or 0, reverse=True)
@@ -2133,7 +2139,7 @@ def _scheduler_loop():
                 save_schedule({"last_run": _LAST_SCHED_RUN})
                 start_job("discovery", run_discovery, targets, s.get("scan_ports", False),
                           s.get("port_profile", "quick"), s.get("use_mdns", True),
-                          s.get("use_snmp", True), s.get("workers", "auto"))
+                          s.get("use_snmp", True), s.get("workers", "auto"), source="schedule")
         except Exception:
             pass
         time.sleep(10)
@@ -2148,7 +2154,9 @@ def _restore_last_results():
             rec = _load_json(os.path.join(HISTORY_DIR, hist[0]["file"]), None)
             if rec and rec.get("devices"):
                 LAST_RESULTS["subnet"] = rec.get("subnet")
-                LAST_RESULTS["devices"] = rec.get("devices", [])
+                # Overlay the latest saved friendly names — the snapshot may
+                # predate a rename done after that scan.
+                LAST_RESULTS["devices"] = apply_meta(rec.get("devices", []))
     except Exception:
         pass
 
@@ -2199,8 +2207,10 @@ def run_bounded(fn, items, workers, job, on_result=None):
                 pass
 
 
-def start_job(jtype, fn, *args):
+def start_job(jtype, fn, *args, source=None):
     jid, job = new_job(jtype)
+    if source:
+        job["source"] = source
 
     def wrap():
         try:
@@ -2305,19 +2315,38 @@ def _dkey(d):
     return d.get("mac") or d.get("ip")
 
 
+def apply_meta(devices):
+    """Overlay the latest saved friendly name / notes (keyed by MAC, else IP)
+    onto a device list. Names live in devices.json independent of any scan
+    snapshot, so this keeps them correct after a restart or when loading an
+    older scan from history."""
+    meta = load_devices_meta()
+    for d in devices or []:
+        m = meta.get(d.get("mac") or d.get("ip"))
+        if m:
+            if m.get("name") is not None:
+                d["name"] = m.get("name")
+            if m.get("notes") is not None:
+                d["notes"] = m.get("notes")
+    return devices
+
+
 def _finalize(job, alive, subnet, cancelled):
     alive.sort(key=lambda d: socket.inet_aton(d["ip"]))
     job["devices"] = alive
+    src = job.get("source") or "unknown"
     if cancelled:
         job["stopped"] = True
         job["phase"] = "Stopped"
         job["status"] = "done"
+        # A stopped scan still ran — record it (tagged) so nothing is missed.
+        save_history(subnet, alive, src, status="stopped")
         return
     job["phase"] = "Done"
     job["status"] = "done"
     LAST_RESULTS["subnet"] = subnet
     LAST_RESULTS["devices"] = alive
-    save_history(subnet, alive)
+    save_history(subnet, alive, src, status="complete")
 
 
 def run_discovery(job, subnet, scan_ports=False, port_profile="quick",
@@ -2621,7 +2650,7 @@ def run_oui_download(job):
 
 
 def discover(targets, scan_ports=False, port_profile="quick",
-             use_mdns=True, use_snmp=True, req_workers="auto"):
+             use_mdns=True, use_snmp=True, req_workers="auto", source="api"):
     """Run one full discovery synchronously and return the result.
 
     This is the building block shared by the ``--scan`` CLI and the MCP server:
@@ -2631,6 +2660,7 @@ def discover(targets, scan_ports=False, port_profile="quick",
     Returns {"devices", "new_devices", "new_ports", "targets", "note", "error"}.
     """
     _jid, job = new_job("discovery")
+    job["source"] = source or "api"
     run_discovery(job, targets, bool(scan_ports), port_profile,
                   bool(use_mdns), bool(use_snmp), req_workers)
     return {
@@ -2748,7 +2778,9 @@ def openapi_spec():
                         "port_profile": {"type": "string", "enum": ["quick", "extended", "full"]},
                         "use_mdns": {"type": "boolean"},
                         "use_snmp": {"type": "boolean"},
-                        "workers": {"type": "string", "description": "number or 'auto'"}}}}}},
+                        "workers": {"type": "string", "description": "number or 'auto'"},
+                        "source": {"type": "string", "enum": ["manual", "monitor", "api", "schedule", "mcp", "cli"],
+                                   "description": "Trigger tag recorded in history (default 'api' for token callers). Tells scheduled/manual/monitor/mcp/api scans apart."}}}}}},
                 "responses": {"200": job["200"], "400": {"description": "subnet required"}}}},
             "/api/job": {"get": {"tags": ["discovery"], "summary": "Poll a running/finished job",
                 "parameters": [{"name": "id", "in": "query", "required": True,
@@ -3136,7 +3168,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not re.match(r"^scan_\d+\.json$", f):
                     return self._send(400, {"error": "bad file"})
                 rec = _load_json(os.path.join(HISTORY_DIR, f), None)
-                return self._send(200, rec) if rec else self._send(404, {"error": "not found"})
+                if rec:
+                    # Show current friendly names, even if this snapshot predates a rename.
+                    apply_meta(rec.get("devices", []))
+                    return self._send(200, rec)
+                return self._send(404, {"error": "not found"})
             return self._send(200, list_history())
         if path == "/api/export":
             fmt = (qs.get("format") or ["json"])[0]
@@ -3286,9 +3322,14 @@ class Handler(BaseHTTPRequestHandler):
             profile = data.get("port_profile", "quick")
             if profile not in PORT_PROFILES:
                 profile = "quick"
+            # Trigger source: the browser declares manual vs monitor; a
+            # programmatic (token-authed) caller defaults to "api".
+            src = (data.get("source") or "").strip().lower()
+            if src not in ("manual", "monitor", "api", "schedule", "mcp", "cli"):
+                src = "api" if self._auth_method() == "token" else "manual"
             jid = start_job("discovery", run_discovery, subnet, bool(data.get("scan_ports")),
                             profile, bool(data.get("use_mdns", True)), bool(data.get("use_snmp", True)),
-                            data.get("workers", "auto"))
+                            data.get("workers", "auto"), source=src)
             return self._send(200, {"job_id": jid})
         if path == "/api/portscan":
             ip = (data.get("ip") or "").strip()
@@ -3465,7 +3506,7 @@ def main():
     if args.scan:
         res = discover(args.scan, scan_ports=args.ports, port_profile=args.profile,
                        use_mdns=not args.no_mdns, use_snmp=not args.no_snmp,
-                       req_workers=args.workers)
+                       req_workers=args.workers, source="cli")
         if res.get("error"):
             print(json.dumps({"error": res["error"]}) if args.json
                   else ("Error: " + res["error"]), file=sys.stderr)
