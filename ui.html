@@ -474,7 +474,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
           <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="#8aa0bd" fill-opacity="0.22" stroke="#8aa0bd" stroke-width="2" stroke-dasharray="4 2.5"/></svg>Group — expanded</div>
           <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>Single device</div>
           <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="#57ab5a" opacity="0.28"/><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>New since last scan</div>
-          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="none" stroke="#c69026" stroke-width="2" stroke-dasharray="3 3"/><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>New open port(s)</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="none" stroke="#c69026" stroke-width="2.5"/><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>New open port(s)</div>
           <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#c69026" opacity="0.16"/><circle cx="11" cy="11" r="6" fill="#daaa3f"/></svg>Gateway / router</div>
           <div class="row note">Fill colour = device type (risk tier in Exposure mode)</div>
         </div>
@@ -1135,7 +1135,7 @@ function startGraph(list){
         '<text class="tlabel" y="'+(n.r+16)+'" text-anchor="middle" style="fill:'+n.color+'">'+esc(n.label)+(ex?' ▾':' ▸')+'</text></g>';
     }
     const ring=n.ring==='new'?'<circle r="'+(n.r+6)+'" fill="#57ab5a" opacity="0.25"/>'
-      :(n.ring==='chg'?'<circle r="'+(n.r+5)+'" fill="none" stroke="#c69026" stroke-width="2" stroke-dasharray="3 3"/>':'');
+      :(n.ring==='chg'?'<circle r="'+(n.r+5)+'" fill="none" stroke="#c69026" stroke-width="2.5"/>':'');
     return '<g class="tnode" id="n'+i+'" style="cursor:pointer">'+ring+
       '<circle r="'+n.r+'" fill="'+n.color+'" stroke-width="1.4" style="stroke:var(--bg)"/>'+
       '<text class="tlabel" y="'+(n.r+12)+'" text-anchor="middle">'+esc(leafLabel(n.d))+'</text></g>';
