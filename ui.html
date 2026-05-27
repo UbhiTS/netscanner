@@ -76,6 +76,8 @@ header{position:sticky;top:0;z-index:30;
 .brand{display:flex;align-items:center;gap:13px}
 .mark{width:40px;height:40px;flex:0 0 auto}
 .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:3px}
+.brand .namerow{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.brand .tagsep{color:var(--faint);font-size:12px}
 .brand .tag{font-size:10.5px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;font-family:var(--mono)}
 .brand .tagline{font-size:9px;color:var(--faint);letter-spacing:1.4px;text-transform:uppercase;font-family:var(--mono);margin-top:2px}
 .env{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;line-height:1.7}
@@ -329,8 +331,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
       <circle cx="28" cy="31" r="1.7" style="fill:var(--cyan)"/>
     </svg>
     <div>
-      <h1>NETRYX</h1>
-      <div class="tag">Network Intelligence</div>
+      <div class="namerow"><h1>NETRYX</h1><span class="tagsep">·</span><span class="tag">Network Intelligence</span></div>
       <div class="tagline">Discover · Monitor · Automate</div>
     </div>
     <div class="env" id="env">locating network…</div>
