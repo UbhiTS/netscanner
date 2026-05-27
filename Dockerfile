@@ -20,8 +20,23 @@ ENV NETRYX_DATA=/data \
     NETRYX_PORT=8765 \
     NETRYX_NO_BROWSER=1
 
+# Run as an unprivileged user (uid 10001) — smaller blast radius under host
+# networking. ICMP ping still works via the NET_RAW capability (see compose).
+# NOTE: with a host bind-mount for /data, chown it once on the host so this
+# user can write:  sudo chown -R 10001:10001 ./netryx-data
+# (or override in compose with  user: "0:0"  to revert to root).
+RUN useradd -r -u 10001 -m -d /home/netryx netryx \
+    && mkdir -p /data \
+    && chown -R netryx:netryx /data /app
+USER netryx
+
 VOLUME ["/data"]
 EXPOSE 8765
+
+# Liveness probe: the unauthenticated /login page returns 200 when the server
+# is up. (No curl in slim — use Python's stdlib.)
+HEALTHCHECK --interval=30s --timeout=4s --start-period=10s --retries=3 \
+    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('NETRYX_PORT','8765')+'/login', timeout=3)" || exit 1
 
 # Note: with `--network host` (recommended) the EXPOSE above is informational;
 # the app binds directly to the host's port 8765.

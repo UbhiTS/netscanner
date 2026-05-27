@@ -276,6 +276,7 @@ high/critical alerts as live toasts (and desktop notifications if enabled).
 | `NETRYX_PASS` | Seeds/overrides the admin password (default login is `admin`) |
 | `NETRYX_TRUST_LOCALHOST` | `0` (default) prompts everywhere; `1` skips auth for `127.0.0.1` |
 | `NETRYX_OPEN` | `1` disables auth entirely (trusted segments only) |
+| `NETRYX_SECURE_COOKIES` | `1` adds `Secure` to the session cookie (set when behind an HTTPS proxy) |
 | `NETRYX_SESSION_DAYS` | Login session lifetime in days (default `30`) |
 | `NETRYX_TOKEN` | Legacy static bearer token (managed tokens in the UI are preferred) |
 | `NETRYX_WEBHOOK` | URL to POST events to |
@@ -336,8 +337,21 @@ server {
         # Pass the caller's credentials (Bearer token / Basic) through:
         proxy_set_header Authorization $http_authorization;
     }
+
+    # The SSE/long-poll endpoints accept a token in the query string (EventSource
+    # can't set headers). Don't write those URLs to the access log.
+    location /api/events/ {
+        access_log off;
+        proxy_pass http://127.0.0.1:8765;
+        proxy_set_header Host $host;
+        proxy_buffering off;          # stream Server-Sent Events without buffering
+        proxy_read_timeout 1h;
+    }
 }
 ```
+
+Set `NETRYX_SECURE_COOKIES=1` once TLS is terminating in front, so the session
+cookie is only ever sent over HTTPS.
 
 **Gotcha:** nginx connects to Netryx from `127.0.0.1`. Keep
 `NETRYX_TRUST_LOCALHOST` at its default (`0`) so proxied requests are still

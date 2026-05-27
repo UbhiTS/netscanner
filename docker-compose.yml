@@ -18,6 +18,19 @@ services:
     cap_add:
       - NET_RAW                 # ICMP ping only; not required (TCP discovery works without it).
                                 # No privileged mode needed.
+    # The image runs as a non-root user (uid 10001). With this host bind-mount
+    # for /data, chown it once so that user can write:
+    #     sudo chown -R 10001:10001 ./netryx-data
+    # To revert to running as root instead, uncomment:
+    # user: "0:0"
+    # Keep a runaway from taking down the NAS, and cap log growth.
+    mem_limit: 256m
+    cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - NETRYX_HOST=0.0.0.0
       - NETRYX_PORT=8765    # change if 8765 is taken on the NAS
@@ -29,6 +42,7 @@ services:
       # - NETRYX_PASS=change-me               # seed/override the admin password (also a recovery login)
       # - NETRYX_TRUST_LOCALHOST=0            # 0=prompt everywhere (default); 1=skip auth for 127.0.0.1
       # - NETRYX_OPEN=0                        # 1=disable auth entirely (trusted segment only)
+      # - NETRYX_SECURE_COOKIES=1             # set when behind an HTTPS proxy (adds Secure to the session cookie)
       # - NETRYX_TOKEN=change-me              # legacy static bearer token (or create tokens in the UI)
       # --- Optional: proactive alerts ---
       # - NETRYX_WEBHOOK=https://hooks.example.com/netryx

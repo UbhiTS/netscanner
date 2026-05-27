@@ -41,6 +41,7 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+VERSION = os.environ.get("NETRYX_VERSION", "1.0.0").strip() or "1.0.0"
 IS_WINDOWS = platform.system().lower().startswith("win")
 SUBPROC_KW = {"creationflags": 0x08000000} if IS_WINDOWS else {}  # CREATE_NO_WINDOW
 
@@ -59,6 +60,11 @@ NETRYX_PASS = os.environ.get("NETRYX_PASS", "")
 NETRYX_TRUST_LOCALHOST = os.environ.get("NETRYX_TRUST_LOCALHOST", "0").strip().lower() \
     in ("1", "true", "yes", "on")
 NETRYX_OPEN = os.environ.get("NETRYX_OPEN", "").strip().lower() in ("1", "true", "yes", "on")
+# Set when terminating TLS in front of Netryx (e.g. nginx https) so session
+# cookies carry the Secure attribute and are never sent over plain HTTP.
+NETRYX_SECURE_COOKIES = os.environ.get("NETRYX_SECURE_COOKIES", "").strip().lower() \
+    in ("1", "true", "yes", "on")
+COOKIE_ATTRS = "; HttpOnly; SameSite=Lax" + ("; Secure" if NETRYX_SECURE_COOKIES else "")
 TOKENS_FILE = os.path.join(DATA_DIR, "tokens.json")
 AUTH_FILE = os.path.join(DATA_DIR, "auth.json")
 for _d in (DATA_DIR, HISTORY_DIR):
@@ -66,6 +72,17 @@ for _d in (DATA_DIR, HISTORY_DIR):
         os.makedirs(_d, exist_ok=True)
     except Exception:
         pass
+
+
+def log(msg):
+    """Minimal timestamped stderr logging for operational visibility (HTTP
+    access logs stay suppressed; this is for notable server-side events)."""
+    try:
+        sys.stderr.write("[%s] %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), msg))
+        sys.stderr.flush()
+    except Exception:
+        pass
+
 
 COMMON_PORTS = {
     21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS", 67: "DHCP",
@@ -933,7 +950,7 @@ def download_oui():
     last_err = "no url reachable"
     for url in OUI_URLS:
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Netryx/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "Netryx/" + VERSION})
             with urllib.request.urlopen(req, timeout=90) as r:
                 data = r.read()
             if not data or len(data) < 1000:
@@ -1372,12 +1389,28 @@ def _load_json(path, default):
         return default
 
 
+_SAVE_LOCK = threading.Lock()
+
+
 def _save_json(path, data):
+    """Durably persist JSON: serialize under a lock, write to a temp file in the
+    same directory, fsync, then atomically os.replace() into place. A crash or
+    container kill can never leave a half-written tokens.json / auth.json /
+    baseline.json behind, and concurrent writers can't interleave."""
+    tmp = "%s.%d.tmp" % (path, os.getpid())
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        with _SAVE_LOCK:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
         return True
     except Exception:
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
         return False
 
 
@@ -2137,11 +2170,12 @@ def _scheduler_loop():
                 targets = (s.get("targets") or "").strip() or default_subnet()
                 _LAST_SCHED_RUN = time.time()
                 save_schedule({"last_run": _LAST_SCHED_RUN})
+                log("scheduler: starting scheduled scan of %s" % targets)
                 start_job("discovery", run_discovery, targets, s.get("scan_ports", False),
                           s.get("port_profile", "quick"), s.get("use_mdns", True),
                           s.get("use_snmp", True), s.get("workers", "auto"), source="schedule")
-        except Exception:
-            pass
+        except Exception as e:
+            log("scheduler error: %s" % e)
         time.sleep(10)
 
 
@@ -2722,7 +2756,7 @@ def devices_to_csv(devices):
     return buf.getvalue()
 
 
-OPENAPI_VERSION = "1.0.0"
+OPENAPI_VERSION = VERSION
 
 
 def openapi_spec():
@@ -3030,9 +3064,57 @@ def load_ui():
 # HTTP handler
 # --------------------------------------------------------------------------- #
 
+MAX_BODY_BYTES = 2 * 1024 * 1024     # reject request bodies larger than this (anti-OOM)
+MAX_STREAMS = 64                     # max concurrent SSE + long-poll connections
+_STREAMS = {"n": 0}
+_STREAMS_LOCK = threading.Lock()
+
+
+def _stream_acquire():
+    with _STREAMS_LOCK:
+        if _STREAMS["n"] >= MAX_STREAMS:
+            return False
+        _STREAMS["n"] += 1
+        return True
+
+
+def _stream_release():
+    with _STREAMS_LOCK:
+        _STREAMS["n"] = max(0, _STREAMS["n"] - 1)
+
+
+# Per-IP login throttle: lock out an IP after too many failures within a window.
+LOGIN_MAX_FAILS = 10
+LOGIN_WINDOW = 300                   # seconds
+_LOGIN_FAILS = {}                    # ip -> [count, window_start]
+_LOGIN_LOCK = threading.Lock()
+
+
+def login_blocked(ip):
+    with _LOGIN_LOCK:
+        c, t = _LOGIN_FAILS.get(ip, (0, 0))
+        return c >= LOGIN_MAX_FAILS and (time.time() - t) < LOGIN_WINDOW
+
+
+def login_fail(ip):
+    now = time.time()
+    with _LOGIN_LOCK:
+        c, t = _LOGIN_FAILS.get(ip, (0, 0))
+        if now - t > LOGIN_WINDOW:
+            c, t = 0, now
+        _LOGIN_FAILS[ip] = (c + 1, t or now)
+        if len(_LOGIN_FAILS) > 1024:     # opportunistic prune of stale entries
+            for k in [k for k, v in _LOGIN_FAILS.items() if now - v[1] > LOGIN_WINDOW]:
+                _LOGIN_FAILS.pop(k, None)
+
+
+def login_ok(ip):
+    with _LOGIN_LOCK:
+        _LOGIN_FAILS.pop(ip, None)
+
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "Netryx/1.0"
+    server_version = "Netryx/" + VERSION
 
     def log_message(self, *args):
         pass
@@ -3045,6 +3127,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
         if extra:
             for k, v in extra.items():
                 self.send_header(k, v)
@@ -3057,6 +3142,9 @@ class Handler(BaseHTTPRequestHandler):
     def _body(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
+            if length > MAX_BODY_BYTES:      # refuse oversized bodies before reading (anti-OOM)
+                self.close_connection = True
+                return {}
             return json.loads((self.rfile.read(length) if length else b"{}").decode("utf-8") or "{}")
         except Exception:
             return {}
@@ -3069,7 +3157,12 @@ class Handler(BaseHTTPRequestHandler):
         hdr = self.headers.get("Authorization", "")
         if hdr.startswith("Bearer "):
             return hdr[7:].strip()
-        return (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
+        # A query-string token is only honored on the streaming endpoints, where
+        # EventSource/long-poll clients can't set an Authorization header. This
+        # keeps tokens out of URLs (and proxy logs) everywhere else.
+        if urlparse(self.path).path.startswith("/api/events/"):
+            return (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
+        return ""
 
     def _basic_ok(self):
         hdr = self.headers.get("Authorization", "")
@@ -3136,7 +3229,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/logout":
             drop_session(self._cookie("ns_session"))
             return self._send(302, b"", extra={"Location": "/login",
-                "Set-Cookie": "ns_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"})
+                "Set-Cookie": "ns_session=; Path=/; Max-Age=0%s" % COOKIE_ATTRS})
         if not self._authed():
             return self._deny()
         if path in ("/", "/index.html"):
@@ -3225,22 +3318,28 @@ class Handler(BaseHTTPRequestHandler):
                 timeout = max(1, min(60, int((qs.get("timeout") or ["25"])[0])))
             except Exception:
                 timeout = 25
+            if not _stream_acquire():
+                return self._send(503, {"error": "too many concurrent connections"})
             sid = "poll-" + secrets.token_hex(3)
             sub_register(sid, transport="long-poll", caller=self._caller_label(), ip=self._client_ip())
             try:
                 EVENT_HUB.wait(since, timeout)
             finally:
                 sub_remove(sid)
+                _stream_release()
             return self._send(200, {"events": events_since(since), "seq": EVENT_HUB.seq})
         if path == "/api/events/stream":
             sv = (qs.get("since") or [None])[0]
             if sv is None:                       # honor EventSource reconnect header
                 sv = self.headers.get("Last-Event-ID") or "0"
             last = int(sv) if str(sv).isdigit() else 0
+            if not _stream_acquire():
+                return self._send(503, {"error": "too many concurrent connections"})
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
             self.send_header("Connection", "keep-alive")
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("X-Accel-Buffering", "no")   # don't let nginx buffer SSE
             self.end_headers()
             sid = "sse-" + secrets.token_hex(4)
@@ -3268,6 +3367,7 @@ class Handler(BaseHTTPRequestHandler):
                 pass          # client disconnected
             finally:
                 sub_remove(sid)
+                _stream_release()
                 audit("unsubscribe", transport="sse", caller=who, sid=sid)
             return
         if path == "/api/tokens":
@@ -3280,21 +3380,28 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         data = self._body()
         if path == "/api/login":
+            ip = self._client_ip()
+            if login_blocked(ip):
+                return self._send(429, {"error": "too many attempts — wait a few minutes"})
             if verify_admin((data.get("username") or "").strip(), data.get("password") or ""):
+                login_ok(ip)
                 tok = new_session()
                 return self._send(200, {"ok": True}, extra={"Set-Cookie":
-                    "ns_session=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Lax" % (tok, SESSION_TTL)})
+                    "ns_session=%s; Path=/; Max-Age=%d%s" % (tok, SESSION_TTL, COOKIE_ATTRS)})
+            login_fail(ip)
+            time.sleep(0.5)          # slow scripted brute force
             return self._send(401, {"error": "invalid username or password"})
         if path == "/api/logout":
             drop_session(self._cookie("ns_session"))
             return self._send(200, {"ok": True}, extra={"Set-Cookie":
-                "ns_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"})
+                "ns_session=; Path=/; Max-Age=0%s" % COOKIE_ATTRS})
         if not self._authed():
             return self._deny()
         if path == "/mcp":
             try:
                 import netryx_mcp as mcpmod
             except Exception as e:
+                log("MCP module unavailable: %s" % e)
                 return self._send(500, {"error": "MCP module unavailable: %s" % e})
             # Bind the MCP tools to *this* running engine instance so /mcp sees
             # the same live scan results and jobs the web UI does.
@@ -3525,7 +3632,7 @@ def main():
     url = "http://%s:%d" % (shown, port)
 
     print("=" * 64)
-    print("  Netryx - Signal Cartography")
+    print("  Netryx %s - Signal Cartography" % VERSION)
     print("  Open:  " + url)
     print("  Data:  " + DATA_DIR)
     print("  Press Ctrl+C to stop.")
