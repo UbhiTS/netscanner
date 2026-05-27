@@ -215,6 +215,13 @@ table.dev td .pillwrap{display:flex;flex-wrap:wrap;align-items:center}
 .mapkey .row{display:flex;align-items:center;gap:8px;line-height:1.25;white-space:nowrap}
 .mapkey .row svg{flex:0 0 auto;width:22px;height:22px}
 .mapkey .row.note{color:var(--faint);font-size:10.5px;margin-top:3px;line-height:1.35;white-space:normal}
+/* Floating expand/collapse control — mirrors the Key panel, pinned to the top-right of the map */
+.mapbtn{position:absolute;top:10px;right:10px;z-index:6;display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;padding:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);box-shadow:var(--shadow);cursor:pointer;transition:.15s}
+.mapbtn:hover{border-color:var(--ix-border-hi);background:var(--raise)}
+.mapbtn:focus-visible{outline:none;border-color:var(--blue);box-shadow:var(--ix-glow)}
+.mapbtn svg{display:block}
 
 .empty{text-align:center;color:var(--muted);padding:64px 20px}
 .empty svg{opacity:.5;margin-bottom:14px}
@@ -482,7 +489,6 @@ textarea.ceinput{min-height:58px;resize:vertical}
           <option value="ports">Open ports</option>
         </select>
       </span>
-      <button id="expandall" class="ghost sm" onclick="toggleExpandAll()" title="Expand or collapse every group">Expand all</button>
     </div>
     <div id="topo">
       <div class="tip" id="tip"></div>
@@ -498,6 +504,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
           <div class="row note">Fill colour = device type (risk tier in Exposure mode)</div>
         </div>
       </div>
+      <button class="mapbtn" id="expandall" type="button" onclick="toggleExpandAll()"></button>
       <div id="svgwrap"></div>
       <div class="legend" id="legend"></div>
     </div>
@@ -1082,12 +1089,17 @@ function toggleMapKey(){const k=document.getElementById('mapkey');if(!k)return;
 function setMapLabel(v){mapLabel=v;try{localStorage.setItem('ns_maplabel',v);}catch(_){}renderTopo();}
 function toggleGroup(key){ if(expanded.has(key))expanded.delete(key); else expanded.add(key); startGraph(_mapList); syncExpandBtn(); }
 function _groupKeys(){ return [...new Set((_mapList||[]).filter(d=>!d.is_gateway).map(d=>groupKey(d)))]; }
+const ICON_EXPAND='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+const ICON_COLLAPSE='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg>';
 function syncExpandBtn(){
   const b=document.getElementById('expandall'); if(!b)return;
-  if(mapMode==='ipgrid'){ b.style.display='none'; return; }
-  b.style.display='';
   const keys=_groupKeys();
-  b.textContent=(keys.length>0 && keys.every(k=>expanded.has(k)))?'Collapse all':'Expand all';
+  if(mapMode==='ipgrid' || keys.length===0){ b.style.display='none'; return; }
+  b.style.display='';
+  const allOpen=keys.every(k=>expanded.has(k));
+  b.innerHTML=allOpen?ICON_COLLAPSE:ICON_EXPAND;
+  const lbl=allOpen?'Collapse all groups':'Expand all groups';
+  b.title=lbl; b.setAttribute('aria-label',lbl);
 }
 function toggleExpandAll(){
   const keys=_groupKeys(); if(!keys.length)return;
