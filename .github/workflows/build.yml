@@ -112,6 +112,8 @@ jobs:
             type=sha
       - name: Build and push image
         uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: "false"   # don't upload the .dockerbuild artifact (it broke the release download)
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
@@ -235,10 +237,21 @@ jobs:
     needs: [version, docker, windows-exe, macos-exe, linux-build]
     if: needs.version.outputs.released == 'true'
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
         with:
+          name: Netryx-windows-exe
           path: dist
-          merge-multiple: true
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: netryx-macos-universal
+          path: dist
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: netryx-linux
+          path: dist
       - name: Prepare release assets & notes
         shell: bash
         env:
