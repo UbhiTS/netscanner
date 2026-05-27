@@ -430,7 +430,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
       <button class="ghost sm" onclick="exportData('json')">JSON</button>
     </div>
     <div class="seg">
-      <button id="v-events" onclick="setView('events')">Events<span class="evbadge" id="evbadge" style="display:none">0</span></button>
+      <button id="v-events" onclick="setView('events')">Alerts<span class="evbadge" id="evbadge" style="display:none">0</span></button>
       <button id="v-hist" onclick="setView('hist')">History</button>
       <button id="v-audit" onclick="setView('audit')">Audit</button>
       <button id="v-settings" onclick="setView('settings')" title="Security &amp; settings">⚙ Settings</button>
@@ -1533,9 +1533,9 @@ async function renderEvents(){
       return '<tr><td class="mono" style="font-size:11px">'+esc(when)+'</td><td><span class="kind '+esc(e.kind)+'">'+(e.kind==='rogue_device'?'rogue device':'new port')+'</span></td><td class="mono">'+detail+'</td></tr>';
     }).join('');
   }else{
-    feed='<tr><td colspan="3" class="hint">No events yet'+(has?'':' — set a baseline to start detecting changes')+'.</td></tr>';
+    feed='<tr><td colspan="3" class="hint">No alerts yet'+(has?'':' — set a baseline to start detecting changes')+'.</td></tr>';
   }
-  html+='<div class="seccard evfeed"><h3>Event log <span id="livedot" class="livedot '+(liveConnected?'on':'off')+'">'+(liveConnected?'● live':'● offline')+'</span></h3><div class="sub">Unexpected devices and ports detected over time, newest first.</div><div class="tablewrap"><table class="dev"><thead><tr><th>When</th><th>Type</th><th>Detail</th></tr></thead><tbody>'+feed+'</tbody></table></div></div>';
+  html+='<div class="seccard evfeed"><h3>Alerts <span id="livedot" class="livedot '+(liveConnected?'on':'off')+'">'+(liveConnected?'● live':'● offline')+'</span></h3><div class="sub">Unexpected devices and ports detected over time, newest first.</div><div class="tablewrap"><table class="dev"><thead><tr><th>When</th><th>Type</th><th>Detail</th></tr></thead><tbody>'+feed+'</tbody></table></div></div>';
   body.innerHTML=html;
 }
 async function renderSettings(){
