@@ -24,6 +24,8 @@ import json
 import os
 import sys
 import contextlib
+import threading
+import time
 
 # Import the engine that lives next to this file.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -37,7 +39,65 @@ DEFAULT_PROTOCOL = "2024-11-05"
 # (it shouldn't, but be safe) is redirected to stderr so it never corrupts the
 # protocol stream.
 _OUT = sys.stdout
+_OUT_LOCK = threading.Lock()
 _TIER_ORDER = {"none": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+
+# ---- live event subscription (server-initiated push over the stdio channel) ----
+_SEV_RANK = {"info": 0, "warning": 1, "high": 2, "critical": 3}
+_SUB = {"on": False, "min": 0, "kinds": None, "last": 0}
+_WATCHER_STARTED = False
+
+
+def _event_max_id():
+    try:
+        evs = engine._load_json(engine.EVENTS_FILE, []) or []
+        return max([e.get("id", 0) for e in evs], default=0)
+    except Exception:
+        return 0
+
+
+def _watch_events():
+    # Poll the shared events file (works cross-process with the web server) and
+    # push a JSON-RPC notification per new event matching the subscription filter.
+    while True:
+        try:
+            if _SUB["on"]:
+                evs = engine._load_json(engine.EVENTS_FILE, []) or []
+                for e in [x for x in evs if x.get("id", 0) > _SUB["last"]]:
+                    _SUB["last"] = max(_SUB["last"], e.get("id", 0))
+                    if _SEV_RANK.get(e.get("severity", "info"), 0) < _SUB["min"]:
+                        continue
+                    if _SUB["kinds"] and e.get("kind") not in _SUB["kinds"]:
+                        continue
+                    _send({"jsonrpc": "2.0", "method": "notifications/netryx/event", "params": e})
+        except Exception:
+            pass
+        time.sleep(2.0)
+
+
+def _ensure_watcher():
+    global _WATCHER_STARTED
+    if not _WATCHER_STARTED:
+        _WATCHER_STARTED = True
+        threading.Thread(target=_watch_events, daemon=True).start()
+
+
+def tool_subscribe(args):
+    _SUB["min"] = _SEV_RANK.get((args.get("min_severity") or "info").lower(), 0)
+    k = args.get("kinds")
+    _SUB["kinds"] = set(k) if (k and isinstance(k, list)) else None
+    _SUB["last"] = _event_max_id()      # only push events created after subscribing
+    _SUB["on"] = True
+    _ensure_watcher()
+    return {"subscribed": True,
+            "min_severity": (args.get("min_severity") or "info"),
+            "kinds": (list(_SUB["kinds"]) if _SUB["kinds"] else "all"),
+            "transport": "MCP notifications (method 'notifications/netryx/event'), one per matching event"}
+
+
+def tool_unsubscribe(args):
+    _SUB["on"] = False
+    return {"subscribed": False}
 
 
 # --------------------------------------------------------------------------- #
@@ -506,6 +566,26 @@ TOOLS = [
         },
         "_fn": tool_recent_events,
     },
+    {
+        "name": "subscribe",
+        "description": "Subscribe to live Netryx events. After calling this, the server pushes a JSON-RPC notification (method 'notifications/netryx/event') for every new event that matches your filter - rogue devices, new open ports, critical exposure, scan completion. Filter by minimum severity and/or specific event kinds. Use 'unsubscribe' to stop.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "min_severity": {"type": "string", "enum": ["info", "warning", "high", "critical"],
+                                 "description": "Only push events at or above this severity. Default 'info'."},
+                "kinds": {"type": "array", "items": {"type": "string"},
+                          "description": "Only push these kinds, e.g. ['rogue_device','exposure_alert','new_open_port']. Omit for all."}
+            },
+        },
+        "_fn": tool_subscribe,
+    },
+    {
+        "name": "unsubscribe",
+        "description": "Stop receiving live event notifications.",
+        "inputSchema": {"type": "object", "properties": {}},
+        "_fn": tool_unsubscribe,
+    },
 ]
 TOOL_INDEX = {t["name"]: t for t in TOOLS}
 
@@ -578,8 +658,9 @@ def dispatch(req):
 
 
 def _send(msg):
-    _OUT.write(json.dumps(msg) + "\n")
-    _OUT.flush()
+    with _OUT_LOCK:
+        _OUT.write(json.dumps(msg) + "\n")
+        _OUT.flush()
 
 
 def main():

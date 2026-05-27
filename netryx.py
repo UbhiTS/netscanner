@@ -1529,19 +1529,88 @@ def diff_against_baseline(devices, b=None):
             "missing_devices": missing, "baseline_size": len(base)}
 
 
+# ---- event hub: in-memory ring + ids + a condition for push (SSE / long-poll) ----
+EVENT_SEVERITY = {
+    "rogue_device": "critical", "new_open_port": "high", "exposure_alert": "high",
+    "device_missing": "warning", "scan_complete": "info",
+}
+SEVERITY_RANK = {"info": 0, "warning": 1, "high": 2, "critical": 3}
+EVENTS_LOCK = threading.Lock()
+RECENT_EVENTS = []          # [{id,time,kind,severity,data}], newest last
+_EVENT_SEQ = 0
+
+
+class _EventHub:
+    """Notify-on-new-event primitive for same-process SSE / long-poll waiters."""
+    def __init__(self):
+        self.cond = threading.Condition()
+        self.seq = 0
+
+    def publish(self):
+        with self.cond:
+            self.seq += 1
+            self.cond.notify_all()
+
+    def wait(self, last_seq, timeout):
+        with self.cond:
+            if self.seq <= last_seq:
+                self.cond.wait(timeout)
+            return self.seq
+
+
+EVENT_HUB = _EventHub()
+
+
+def _load_recent_events():
+    global RECENT_EVENTS, _EVENT_SEQ
+    evs = _load_json(EVENTS_FILE, []) or []
+    seq = 0
+    for e in evs:
+        if not e.get("id"):
+            seq += 1
+            e["id"] = seq
+        else:
+            seq = max(seq, e["id"])
+        e.setdefault("severity", EVENT_SEVERITY.get(e.get("kind"), "info"))
+    RECENT_EVENTS = evs[-EVENTS_MAX:]
+    _EVENT_SEQ = max([e.get("id", 0) for e in RECENT_EVENTS], default=0)
+    EVENT_HUB.seq = _EVENT_SEQ
+
+
 def list_events(limit=100):
-    evs = _load_json(EVENTS_FILE, [])
+    with EVENTS_LOCK:
+        evs = list(RECENT_EVENTS)
     return (evs[-int(limit):] if limit else evs)[::-1]
 
 
+def events_since(since):
+    with EVENTS_LOCK:
+        return [e for e in RECENT_EVENTS if e.get("id", 0) > since]
+
+
 def record_event(kind, data):
-    evs = _load_json(EVENTS_FILE, [])
-    ev = {"time": time.time(), "kind": kind, "data": data}
-    evs.append(ev)
-    if len(evs) > EVENTS_MAX:
-        evs = evs[-EVENTS_MAX:]
-    _save_json(EVENTS_FILE, evs)
+    global _EVENT_SEQ
+    with EVENTS_LOCK:
+        _EVENT_SEQ += 1
+        ev = {"id": _EVENT_SEQ, "time": time.time(), "kind": kind,
+              "severity": EVENT_SEVERITY.get(kind, "info"), "data": data}
+        RECENT_EVENTS.append(ev)
+        if len(RECENT_EVENTS) > EVENTS_MAX:
+            del RECENT_EVENTS[:-EVENTS_MAX]
+        _save_json(EVENTS_FILE, RECENT_EVENTS)
+    EVENT_HUB.publish()          # wake SSE / long-poll waiters (same process)
     return ev
+
+
+def _sse_frame(e):
+    return ("id: %d\nevent: %s\ndata: %s\n\n"
+            % (e.get("id", 0), e.get("kind", "event"), json.dumps(e))).encode("utf-8")
+
+
+try:
+    _load_recent_events()
+except Exception:
+    pass
 
 
 def _emit(events):
@@ -1591,6 +1660,33 @@ def evaluate_baseline(devices):
     _save_json(ALERTS_FILE, sorted(seen))
     _emit(fresh)
     return diff
+
+
+def _emit_scan_events(job, alive, subnet):
+    """After a finished scan: critical-exposure alerts (deduped) + scan_complete."""
+    fresh = []
+    seen = set(_load_json(ALERTS_FILE, []))
+    changed = False
+    for d in alive:
+        r = d.get("risk") or risk_of(d)
+        if r.get("tier") == "critical":
+            sig = "exp:" + str(_bkey(d))
+            if sig not in seen:
+                seen.add(sig)
+                changed = True
+                fresh.append(record_event("exposure_alert", {
+                    "key": _bkey(d), "ip": d.get("ip"),
+                    "name": d.get("name") or d.get("hostname") or d.get("mdns_name"),
+                    "tier": r.get("tier"), "score": r.get("score"),
+                    "reasons": r.get("reasons"),
+                    "open_ports": [p.get("port") for p in d.get("ports", [])]}))
+    if changed:
+        _save_json(ALERTS_FILE, sorted(seen))
+    fresh.append(record_event("scan_complete", {
+        "subnet": subnet, "count": len(alive),
+        "new_devices": len(job.get("new_devices") or []),
+        "new_ports": job.get("new_ports", 0)}))
+    _emit(fresh)
 
 
 # ---- minimal MQTT 3.1.1 QoS0 publisher (stdlib sockets only) ----
@@ -2255,6 +2351,10 @@ def run_discovery(job, subnet, scan_ports=False, port_profile="quick",
             evaluate_baseline(alive)
         except Exception:
             pass
+        try:
+            _emit_scan_events(job, alive, subnet)
+        except Exception:
+            pass
 
     _finalize(job, alive, subnet, bool(job.get("cancel")))
 
@@ -2506,6 +2606,19 @@ def openapi_spec():
                 "parameters": [{"name": "limit", "in": "query", "required": False,
                                 "schema": {"type": "integer", "default": 100}}],
                 "responses": {"200": ok}}},
+            "/api/events/poll": {"get": {"tags": ["security"],
+                "summary": "Long-poll for events newer than 'since' (blocks up to 'timeout's)",
+                "parameters": [
+                    {"name": "since", "in": "query", "schema": {"type": "integer", "default": 0},
+                     "description": "Return events with id greater than this"},
+                    {"name": "timeout", "in": "query", "schema": {"type": "integer", "default": 25},
+                     "description": "Seconds to block waiting for a new event (1-60)"}],
+                "responses": {"200": ok}}},
+            "/api/events/stream": {"get": {"tags": ["security"],
+                "summary": "Server-Sent Events stream of live events (text/event-stream)",
+                "parameters": [{"name": "since", "in": "query", "schema": {"type": "integer", "default": 0},
+                                "description": "Replay events after this id before streaming live"}],
+                "responses": {"200": {"description": "text/event-stream of event frames"}}}},
             "/api/tokens": {
                 "get": {"tags": ["security"], "summary": "List API tokens (values are viewable)",
                         "responses": {"200": ok}},
@@ -2799,6 +2912,47 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 limit = 100
             return self._send(200, {"events": list_events(limit)})
+        if path == "/api/events/poll":
+            try:
+                since = int((qs.get("since") or ["0"])[0])
+            except Exception:
+                since = 0
+            try:
+                timeout = max(1, min(60, int((qs.get("timeout") or ["25"])[0])))
+            except Exception:
+                timeout = 25
+            EVENT_HUB.wait(since, timeout)
+            return self._send(200, {"events": events_since(since), "seq": EVENT_HUB.seq})
+        if path == "/api/events/stream":
+            try:
+                last = int((qs.get("since") or ["0"])[0])
+            except Exception:
+                last = 0
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("X-Accel-Buffering", "no")   # don't let nginx buffer SSE
+            self.end_headers()
+            try:
+                self.wfile.write(b": connected\n\n")
+                for e in events_since(last):
+                    self.wfile.write(_sse_frame(e))
+                    last = e["id"]
+                self.wfile.flush()
+                while True:
+                    EVENT_HUB.wait(last, 20)
+                    evs = events_since(last)
+                    if evs:
+                        for e in evs:
+                            self.wfile.write(_sse_frame(e))
+                            last = e["id"]
+                    else:
+                        self.wfile.write(b": keepalive\n\n")   # heartbeat
+                    self.wfile.flush()
+            except Exception:
+                pass          # client disconnected
+            return
         if path == "/api/tokens":
             return self._send(200, {"tokens": list_tokens(),
                                     "trust_localhost": NETRYX_TRUST_LOCALHOST,
