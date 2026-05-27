@@ -1129,7 +1129,6 @@ function startGraph(list){
     if(n.kind==='agg'){
       const ex=expanded.has(n.key);
       return '<g class="tnode" id="n'+i+'" style="cursor:pointer">'+
-        '<circle r="'+(n.r+6)+'" fill="'+n.color+'" opacity="'+(ex?0.22:0.10)+'"/>'+
         '<circle r="'+n.r+'" fill="'+n.color+'" fill-opacity="0.26" stroke="'+n.color+'" stroke-width="'+(ex?1:2)+'"/>'+
         '<text y="5" text-anchor="middle" style="fill:var(--text);font-size:'+(n.r>=24?17:14)+'px;font-weight:600">'+n.count+'</text>'+
         '<text class="tlabel" y="'+(n.r+16)+'" text-anchor="middle" style="fill:'+n.color+'">'+esc(n.label)+(ex?' ▾':' ▸')+'</text></g>';
