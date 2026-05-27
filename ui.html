@@ -1532,7 +1532,7 @@ loadLast();
 startEventStream();
 // Restore the view from the URL hash on load, and keep Back/Forward + refresh in sync.
 (function(){
-  const VALID=['table','cards','map','hist','events','settings'];
+  const VALID=['table','cards','map','hist','events','settings','audit'];
   function fromHash(){ const h=(location.hash||'').replace(/^#/,''); return VALID.indexOf(h)>=0?h:'table'; }
   const start=fromHash();
   if(start!=='table') setView(start);
