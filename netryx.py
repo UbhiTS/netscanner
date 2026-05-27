@@ -2056,7 +2056,8 @@ def login_page():
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netryx - Sign in</title>
 <style>
-:root{--bg:#0b0f17;--panel:#111726;--border:#1e2a40;--text:#e6edf3;--muted:#8aa0bd;--cyan:#49d8f2;--blue:#3b82f6;--red:#f0716b}
+:root{--bg:#0b0f17;--panel:#111726;--border:#1e2a40;--text:#e6edf3;--muted:#8aa0bd;--cyan:#49d8f2;--blue:#3b82f6;--red:#f0716b;
+  --ix:#f4c44e;--ix-strong:#e0a02e;--ix-border:rgba(244,196,78,.50);--ix-border-hi:rgba(244,196,78,.95)}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);
@@ -2067,11 +2068,11 @@ body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:c
 .brand h1{font-size:18px;letter-spacing:4px;margin:14px 0 2px;font-weight:700}
 .brand .tag{font-size:10.5px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,monospace}
 label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 0 6px}
-input{width:100%;background:#0a0f1a;border:1px solid var(--border);color:var(--text);
-  border-radius:10px;padding:11px 13px;font-size:14px;outline:none}
-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(73,216,242,.14)}
+input{width:100%;background:#0a0f1a;border:1px solid var(--ix-border);color:var(--text);
+  border-radius:10px;padding:11px 13px;font-size:14px;outline:none;transition:.15s}
+input:focus{border-color:var(--ix-border-hi);box-shadow:0 0 0 3px rgba(244,196,78,.16)}
 button{width:100%;margin-top:20px;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;
-  color:#04121c;background:linear-gradient(135deg,var(--cyan),var(--blue));cursor:pointer}
+  color:#1a1205;background:linear-gradient(135deg,var(--ix),var(--ix-strong));cursor:pointer;box-shadow:0 0 16px rgba(244,196,78,.32)}
 button:active{transform:translateY(1px)}
 .err{margin-top:14px;min-height:18px;color:var(--red);font-size:12.5px;text-align:center}
 .hint{margin-top:18px;text-align:center;color:var(--muted);font-size:11px;font-family:ui-monospace,monospace}
