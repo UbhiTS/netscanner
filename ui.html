@@ -161,6 +161,17 @@ table.dev .pill.web{background:rgba(73,216,242,.1);border-color:rgba(73,216,242,
   font-size:11.5px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .lg{width:9px;height:9px;border-radius:50%}
+.mapkey{position:absolute;top:10px;left:10px;z-index:6;max-width:240px;
+  background:rgba(11,16,25,.92);border:1px solid var(--border);border-radius:10px;
+  font-size:11.5px;color:var(--muted);backdrop-filter:blur(4px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.mapkey .hd{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:7px 11px;cursor:pointer;user-select:none;color:#aebfd6;font-weight:500;letter-spacing:.3px}
+.mapkey .hd #mapkey-chev{color:var(--ix);font-size:12px}
+.mapkey .body{padding:2px 11px 9px;display:flex;flex-direction:column;gap:6px}
+.mapkey.collapsed .body{display:none}
+.mapkey .row{display:flex;align-items:center;gap:8px;line-height:1.25}
+.mapkey .row svg{flex:0 0 auto}
+.mapkey .row.note{color:var(--faint);font-size:10.5px;margin-top:3px;line-height:1.35}
 
 .empty{text-align:center;color:var(--muted);padding:64px 20px}
 .empty svg{opacity:.5;margin-bottom:14px}
@@ -197,9 +208,7 @@ th .ar{color:var(--ix);font-size:10px}
 button.stop{background:linear-gradient(135deg,#f0716b,#d64545)!important;border:none!important;color:#fff!important;font-weight:700}
 .card.flash{animation:cardflash 1.6s ease-out}
 @keyframes cardflash{0%{box-shadow:0 0 0 2px var(--cyan),0 0 26px rgba(73,216,242,.5)}100%{box-shadow:none}}
-.grid.spotlight .card{opacity:.25;filter:saturate(.55);transition:opacity .4s ease,filter .4s ease}
-.grid.spotlight .card.target{opacity:1;filter:none}
-.card.target{border-color:var(--accent,var(--cyan))!important;animation:targetpulse 1.25s ease-in-out infinite}
+.card.target{border-color:var(--accent,var(--cyan))!important;animation:targetpulse 1s ease-in-out 3}
 @keyframes targetpulse{
   0%,100%{box-shadow:0 0 0 2px var(--accent,var(--cyan)),0 0 16px var(--accent,var(--cyan))}
   50%{box-shadow:0 0 0 3px var(--accent,var(--cyan)),0 0 30px var(--accent,var(--cyan)),0 0 60px var(--accent,var(--cyan))}}
@@ -430,6 +439,18 @@ textarea.ceinput{min-height:58px;resize:vertical}
     </div>
     <div id="topo">
       <div class="tip" id="tip"></div>
+      <div class="mapkey" id="mapkey">
+        <div class="hd" onclick="toggleMapKey()"><span>Key</span><span id="mapkey-chev">▾</span></div>
+        <div class="body">
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="#8aa0bd" fill-opacity="0.22" stroke="#8aa0bd" stroke-width="1.5"/></svg>Group — click to expand</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="#8aa0bd" fill-opacity="0.22" stroke="#8aa0bd" stroke-width="2" stroke-dasharray="4 2.5"/></svg>Group — expanded</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="5" fill="#49d8f2"/></svg>Single device</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="#46d6a0" opacity="0.28"/><circle cx="11" cy="11" r="5" fill="#49d8f2"/></svg>New since last scan</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="none" stroke="#ecb24a" stroke-width="2" stroke-dasharray="3 3"/><circle cx="11" cy="11" r="5" fill="#49d8f2"/></svg>New open port(s)</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#ecb24a" opacity="0.16"/><circle cx="11" cy="11" r="6" fill="#f4d58a"/></svg>Gateway / router</div>
+          <div class="row note">Fill colour = device type (risk tier in Exposure mode)</div>
+        </div>
+      </div>
       <div id="svgwrap"></div>
       <div class="legend" id="legend"></div>
     </div>
@@ -1006,6 +1027,11 @@ function groupOrder(keys){
 }
 function syncMapBar(){document.querySelectorAll('#view-map .mapbar button').forEach(b=>b.classList.toggle('active',b.dataset.m===mapMode));}
 function setMapMode(m){mapMode=m;expanded=new Set();syncMapBar();try{localStorage.setItem('ns_mapmode',m);}catch(_){}renderTopo();}
+function syncMapKey(){const k=document.getElementById('mapkey');if(k)k.style.display=(mapMode==='ipgrid')?'none':'';}
+function toggleMapKey(){const k=document.getElementById('mapkey');if(!k)return;
+  const c=k.classList.toggle('collapsed');const ch=document.getElementById('mapkey-chev');if(ch)ch.textContent=c?'▸':'▾';
+  try{localStorage.setItem('ns_mapkey',c?'1':'0');}catch(_){}}
+(function(){try{if(localStorage.getItem('ns_mapkey')==='1'){const k=document.getElementById('mapkey');if(k){k.classList.add('collapsed');const ch=document.getElementById('mapkey-chev');if(ch)ch.textContent='▸';}}}catch(_){}})();
 function setMapLabel(v){mapLabel=v;try{localStorage.setItem('ns_maplabel',v);}catch(_){}renderTopo();}
 function toggleGroup(key){ if(expanded.has(key))expanded.delete(key); else expanded.add(key); startGraph(_mapList); }
 function stopSim(){
@@ -1018,6 +1044,7 @@ function stopSim(){
 }
 function renderTopo(){
   syncMapBar();
+  syncMapKey();
   const _ml=document.getElementById('maplabel'); if(_ml)_ml.value=mapLabel;
   const list=visible(); _mapList=list;
   if(mapMode==='ipgrid'){ stopSim(); return renderIPGrid(list); }
@@ -1288,16 +1315,14 @@ async function saveCardEdit(){
 function focusCard(ip){
   editingIp=null; lastKey=''; setView('cards');
   setTimeout(()=>{
-    const grid=document.getElementById('grid');
     const el=document.getElementById('card-'+ip);
-    if(!el||!grid)return;
+    if(!el)return;
     el.scrollIntoView({behavior:'smooth',block:'center'});
-    grid.querySelectorAll('.card.target').forEach(c=>c.classList.remove('target'));
-    grid.classList.add('spotlight');
+    document.querySelectorAll('.card.target').forEach(c=>c.classList.remove('target'));
     el.classList.add('target');
-    el.style.animation='none'; void el.offsetWidth; el.style.animation='';
+    el.style.animation='none'; void el.offsetWidth; el.style.animation='';   // restart the pulse
     clearTimeout(window._spotT);
-    window._spotT=setTimeout(()=>{ grid.classList.remove('spotlight'); el.classList.remove('target'); }, 3000);
+    window._spotT=setTimeout(()=>{ el.classList.remove('target'); }, 3200);  // 3 pulses ≈ 3s
   },90);
 }
 async function exportData(fmt){
