@@ -321,7 +321,7 @@ textarea.ceinput{min-height:58px;resize:vertical}
       </div>
       <div class="sep"></div>
       <div class="grp">
-        <label class="chk" title="Also probe each device's ports during discovery"><input type="checkbox" id="scanports"> Scan ports</label>
+        <label class="chk" title="Also probe each device's ports during discovery"><input type="checkbox" id="scanports" onchange="saveScanPorts()"> Scan ports</label>
         <select id="profile" title="Port-scan depth">
           <option value="quick">Quick · ~90 ports</option>
           <option value="extended">Extended · 1–1024</option>
@@ -1342,11 +1342,15 @@ function toggleMonitor(){
 }
 function toggleNotify(){
   if(document.getElementById('notify').checked){
-    if(!('Notification'in window)){toast('This browser has no notification support','amber');
-      document.getElementById('notify').checked=false;return;}
+    var nb=document.getElementById('notify');
+    if(!('Notification'in window)){toast('This browser has no notification support','amber');nb.checked=false;return;}
+    // OS notifications require a secure context — Chrome auto-denies over plain HTTP.
+    if(!window.isSecureContext){
+      toast('Desktop alerts need HTTPS. Serve Netryx behind a TLS proxy, or open it via http://localhost. In-app + event alerts still work.','amber');
+      nb.checked=false;return;}
     Notification.requestPermission().then(p=>{
       if(p==='granted')toast('Desktop alerts enabled','green');
-      else{toast('Notification permission denied','amber');document.getElementById('notify').checked=false;}
+      else{toast('Notifications are blocked for this site — allow them in your browser’s site settings.','amber');nb.checked=false;}
     });
   }
 }
@@ -1652,6 +1656,10 @@ function saveSchedule(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&editingIp)cancelCardEdit();});
 window.addEventListener('resize',()=>{if(view==='map')renderTopo();});
+// "Scan ports" — on by default, and remember the user's choice thereafter.
+function saveScanPorts(){try{localStorage.setItem('ns_scanports',document.getElementById('scanports').checked?'1':'0');}catch(_){}}
+(function(){var v=null;try{v=localStorage.getItem('ns_scanports');}catch(_){}
+  var el=document.getElementById('scanports'); if(el) el.checked=(v==null)?true:(v==='1');})();
 loadInfo();
 loadBaseline(false);
 loadLast();
