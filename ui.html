@@ -753,6 +753,12 @@ function visible(){
   return list;
 }
 function dispName(d){return d.name||d.mdns_name||d.hostname||d.vendor||'Unknown device';}
+function leafLabel(d){
+  // Prefer a friendly name on map leaves; fall back to the IP's last octet.
+  let s=d.name||d.mdns_name||d.hostname;
+  if(s){ s=(''+s).replace(/\.local$/i,''); return s.length>16?s.slice(0,15)+'…':s; }
+  return d.ip ? d.ip.split('.').pop() : '?';
+}
 function renderIfChanged(){
   const k=devices.map(d=>d.ip+':'+((d.ports||[]).length)+':'+(d.new?1:0)+':'+(d.name||'')+':'+(d.device_type||'')).join('|');
   if(k!==lastKey){lastKey=k;render();}
@@ -1010,7 +1016,7 @@ function startGraph(list){
       :(n.ring==='chg'?'<circle r="'+(n.r+5)+'" fill="none" stroke="#ecb24a" stroke-width="2" stroke-dasharray="3 3"/>':'');
     return '<g class="tnode" id="n'+i+'" style="cursor:pointer">'+ring+
       '<circle r="'+n.r+'" fill="'+n.color+'" stroke="#0b1019" stroke-width="1.4"/>'+
-      '<text class="tlabel" y="'+(n.r+12)+'" text-anchor="middle">'+esc(n.d.ip.split('.').pop())+'</text></g>';
+      '<text class="tlabel" y="'+(n.r+12)+'" text-anchor="middle">'+esc(leafLabel(n.d))+'</text></g>';
   }
 
   let svg='<svg viewBox="0 0 '+W+' '+H+'" id="mapsvg" xmlns="http://www.w3.org/2000/svg">';
