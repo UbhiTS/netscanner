@@ -7,21 +7,21 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzBkMTExNycvPjxjaXJjbGUgY3g9JzE2JyBjeT0nMTYnIHI9JzExJyBmaWxsPSdub25lJyBzdHJva2U9JyMzMDM2M2QnIHN0cm9rZS13aWR0aD0nMicvPjxjaXJjbGUgY3g9JzE2JyBjeT0nMTYnIHI9JzcnIGZpbGw9J25vbmUnIHN0cm9rZT0nIzFmNmZlYicgc3Ryb2tlLXdpZHRoPScyJy8+PGNpcmNsZSBjeD0nMTYnIGN5PScxNicgcj0nMycgZmlsbD0nIzU4YTZmZicvPjwvc3ZnPg==">
 <style>
 :root{
-  /* GitHub Primer dark palette */
-  --bg:#0d1117; --bg2:#0d1117; --panel:#161b22; --panel2:#21262d; --raise:#30363d;
-  --border:#30363d; --line:#21262d; --text:#e6edf3; --muted:#7d8590;
-  --faint:#6e7681; --cyan:#58a6ff; --blue:#1f6feb; --amber:#d29922; --warm:#e3b341;
-  --green:#3fb950; --red:#f85149; --violet:#a371f7;
-  --shadow:0 8px 24px rgba(1,4,9,.5); --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+  /* GitHub Primer "dark dimmed" palette — softer/lighter than dark default */
+  --bg:#22272e; --bg2:#1c2128; --panel:#2d333b; --panel2:#373e47; --raise:#444c56;
+  --border:#444c56; --line:#373e47; --text:#adbac7; --muted:#768390;
+  --faint:#636e7b; --cyan:#539bf5; --blue:#316dca; --amber:#c69026; --warm:#daaa3f;
+  --green:#57ab5a; --red:#e5534b; --violet:#986ee2;
+  --shadow:0 8px 24px rgba(1,4,9,.4); --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
   /* Controls: neutral grey borders, green primary, blue focus/links (GitHub convention). */
-  --primary:#238636; --primary-hi:#2ea043;
-  --ix:#2f81f7;                          /* accent: slider / checkbox / focus base */
-  --ix-strong:#388bfd;
-  --ix-border:#30363d;                   /* neutral control border */
-  --ix-border-hi:#8b949e;                /* hover border */
+  --primary:#347d39; --primary-hi:#46954a;
+  --ix:#539bf5;                          /* accent: slider / checkbox / focus base */
+  --ix-strong:#6cb6ff;
+  --ix-border:#444c56;                   /* neutral control border */
+  --ix-border-hi:#768390;                /* hover border */
   --ix-bg:transparent;                   /* secondary buttons keep a solid panel bg */
-  --ix-bg-hi:#30363d;                    /* hover bg */
-  --ix-glow:0 0 0 3px rgba(47,129,247,.40);          /* blue focus ring */
+  --ix-bg-hi:#444c56;                    /* hover bg */
+  --ix-glow:0 0 0 3px rgba(83,155,245,.40);          /* blue focus ring */
   --ix-glow-soft:none;
 }
 *{box-sizing:border-box}
@@ -32,13 +32,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 a{color:var(--cyan);text-decoration:none}
 a:hover{text-decoration:underline}
 .mono{font-family:var(--mono)}
-::selection{background:rgba(56,139,253,.4)}
+::selection{background:rgba(83,155,245,.4)}
 button{font-family:inherit;font-size:13px;cursor:pointer;border:1px solid var(--border);
   background:var(--panel2);color:var(--text);border-radius:6px;padding:8px 13px;transition:.15s;white-space:nowrap}
 button:hover{border-color:var(--ix-border-hi);color:var(--text);background:var(--raise)}
 button:focus-visible{outline:none;border-color:var(--blue);box-shadow:var(--ix-glow)}
 button:disabled{opacity:.5;cursor:not-allowed;background:var(--panel2);border-color:var(--border);box-shadow:none}
-button.primary{background:var(--primary);border:1px solid rgba(240,246,252,.1);color:#fff;font-weight:500}
+button.primary{background:var(--primary);border:1px solid rgba(205,217,229,.1);color:#fff;font-weight:500}
 button.primary:hover{background:var(--primary-hi);color:#fff}
 button.ghost{background:transparent}
 button.sm{padding:6px 10px;font-size:12px}
@@ -73,11 +73,11 @@ header{position:sticky;top:0;z-index:30;
 .dotled.on{background:var(--green);color:var(--green)}
 .bar{height:6px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:13px 0 5px}
 .bar>i{display:block;height:100%;width:0;border-radius:6px;
-  background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .25s;box-shadow:0 0 12px rgba(56,139,253,.6)}
+  background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .25s;box-shadow:0 0 12px rgba(83,155,245,.6)}
 .statusline{display:flex;justify-content:space-between;color:var(--muted);font-size:11.5px;
   font-family:var(--mono);flex-wrap:wrap;gap:8px}
 .statusline .ph{display:flex;align-items:center;gap:8px}
-.spin{width:11px;height:11px;border:2px solid rgba(56,139,253,.25);border-top-color:var(--cyan);
+.spin{width:11px;height:11px;border:2px solid rgba(83,155,245,.25);border-top-color:var(--cyan);
   border-radius:50%;animation:spin .7s linear infinite;display:none}
 .spin.on{display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -87,7 +87,7 @@ main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
 .stat{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:13px;
   padding:14px 16px;overflow:hidden}
 .stat::after{content:"";position:absolute;right:-20px;top:-20px;width:64px;height:64px;border-radius:50%;
-  background:radial-gradient(circle,var(--glow,rgba(56,139,253,.18)),transparent 70%)}
+  background:radial-gradient(circle,var(--glow,rgba(83,155,245,.18)),transparent 70%)}
 .stat .n{font-size:27px;font-weight:800;font-family:var(--mono);letter-spacing:-1px}
 .stat .l{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:1.4px;margin-top:2px}
 
@@ -108,7 +108,7 @@ main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
   border:1px solid var(--border);border-radius:6px;padding:15px 16px;overflow:hidden;
   contain:content;transition:border-color .15s}
 .card:hover{border-color:var(--ix-border-hi)}
-.card.isnew{border-color:rgba(63,185,80,.55);box-shadow:0 0 0 1px rgba(63,185,80,.25)}
+.card.isnew{border-color:rgba(87,171,90,.55);box-shadow:0 0 0 1px rgba(87,171,90,.25)}
 .card .glowedge{position:absolute;inset:0 auto 0 0;width:3px;background:var(--accent,var(--cyan));opacity:.85}
 .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .card .idn{display:flex;gap:11px;align-items:center;min-width:0}
@@ -119,18 +119,18 @@ main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
 .badges{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
 .badge{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--panel2);
   border:1px solid var(--border);color:#bcd0ee;white-space:nowrap;letter-spacing:.3px}
-.badge.new{background:rgba(63,185,80,.16);color:var(--green);border-color:rgba(63,185,80,.4)}
-.badge.gw{background:rgba(210,153,34,.15);color:var(--amber);border-color:rgba(210,153,34,.4)}
+.badge.new{background:rgba(87,171,90,.16);color:var(--green);border-color:rgba(87,171,90,.4)}
+.badge.gw{background:rgba(198,144,38,.15);color:var(--amber);border-color:rgba(198,144,38,.4)}
 .meta{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:12px 0 4px;font-size:12.5px}
 .meta .k{color:var(--muted)}
 .meta .v{word-break:break-word}
 .svc{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.svc .s{font-size:10.5px;padding:2px 7px;border-radius:6px;background:rgba(163,113,247,.12);
-  color:#c3b9ff;border:1px solid rgba(163,113,247,.3)}
+.svc .s{font-size:10.5px;padding:2px 7px;border-radius:6px;background:rgba(152,110,226,.12);
+  color:#c3b9ff;border:1px solid rgba(152,110,226,.3)}
 .ports{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .chip{font-size:11px;font-family:var(--mono);padding:3px 8px;border-radius:7px;background:var(--panel2);
   border:1px solid var(--border);color:#c6d3e6}
-.chip.web{background:rgba(56,139,253,.1);border-color:rgba(56,139,253,.4)}
+.chip.web{background:rgba(83,155,245,.1);border-color:rgba(83,155,245,.4)}
 .chip.web a{color:#8fe9ff}
 .noports{color:var(--faint);font-size:11.5px;margin-top:9px;font-family:var(--mono)}
 .cardbtns{display:flex;gap:7px;margin-top:13px;flex-wrap:wrap}
@@ -147,7 +147,7 @@ table.dev tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--ix)}
 table.dev td.mono{font-family:var(--mono)}
 table.dev .pill{font-family:var(--mono);font-size:11px;background:var(--panel2);border:1px solid var(--border);
   border-radius:6px;padding:1px 6px;margin:1px 2px 1px 0;display:inline-block}
-table.dev .pill.web{background:rgba(56,139,253,.1);border-color:rgba(56,139,253,.4)}
+table.dev .pill.web{background:rgba(83,155,245,.1);border-color:rgba(83,155,245,.4)}
 
 .mapbar{padding:11px 0;border-bottom:1px solid var(--border);margin-bottom:16px}
 #topo{position:relative;border:1px solid var(--border);border-radius:14px;overflow:hidden;
@@ -198,20 +198,20 @@ table.dev .pill.web{background:rgba(56,139,253,.1);border-color:rgba(56,139,253,
 .toast .t.amber{border-left-color:var(--amber)}
 @keyframes sl{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
 .firstrun{margin-top:14px;padding:12px 14px;border:1px dashed var(--border);border-radius:11px;
-  color:var(--muted);font-size:12.5px;background:rgba(56,139,253,.04)}
+  color:var(--muted);font-size:12.5px;background:rgba(83,155,245,.04)}
 /* new-since-last-scan highlighting */
-.chip.fresh{background:rgba(63,185,80,.18);border-color:rgba(63,185,80,.55);color:#9af0cf}
-.chip.web.fresh{background:rgba(63,185,80,.18)}
-.pill.fresh{background:rgba(63,185,80,.18)!important;border-color:rgba(63,185,80,.55)!important;color:#9af0cf}
-.badge.chg{background:rgba(63,185,80,.16);color:#7ee7b8;border-color:rgba(63,185,80,.45)}
-.badge.you{background:rgba(56,139,253,.16);color:#8fe9ff;border-color:rgba(56,139,253,.45)}
-.badge.dns{background:rgba(163,113,247,.16);color:#c3b9ff;border-color:rgba(163,113,247,.45)}
-.badge.rnd{background:rgba(210,153,34,.14);color:#e3b341;border-color:rgba(210,153,34,.4)}
+.chip.fresh{background:rgba(87,171,90,.18);border-color:rgba(87,171,90,.55);color:#9af0cf}
+.chip.web.fresh{background:rgba(87,171,90,.18)}
+.pill.fresh{background:rgba(87,171,90,.18)!important;border-color:rgba(87,171,90,.55)!important;color:#9af0cf}
+.badge.chg{background:rgba(87,171,90,.16);color:#7ee7b8;border-color:rgba(87,171,90,.45)}
+.badge.you{background:rgba(83,155,245,.16);color:#8fe9ff;border-color:rgba(83,155,245,.45)}
+.badge.dns{background:rgba(152,110,226,.16);color:#c3b9ff;border-color:rgba(152,110,226,.45)}
+.badge.rnd{background:rgba(198,144,38,.14);color:#daaa3f;border-color:rgba(198,144,38,.4)}
 th .ar{color:var(--ix);font-size:10px}
 /* stop button + flash + inline editor */
-button.stop{background:#da3633!important;border:1px solid rgba(240,246,252,.1)!important;color:#fff!important;font-weight:500}
+button.stop{background:#c93c37!important;border:1px solid rgba(205,217,229,.1)!important;color:#fff!important;font-weight:500}
 .card.flash{animation:cardflash 1.6s ease-out}
-@keyframes cardflash{0%{box-shadow:0 0 0 2px var(--cyan),0 0 26px rgba(56,139,253,.5)}100%{box-shadow:none}}
+@keyframes cardflash{0%{box-shadow:0 0 0 2px var(--cyan),0 0 26px rgba(83,155,245,.5)}100%{box-shadow:none}}
 /* Lift the focused card above its neighbours so the pulse glow shows evenly on all sides. */
 .card.target{border-color:var(--accent,var(--cyan))!important;animation:targetpulse 1s ease-in-out 4;z-index:5}
 @keyframes targetpulse{
@@ -239,10 +239,10 @@ textarea.ceinput{min-height:58px;resize:vertical}
 .blchip .d.warn{background:var(--red);color:var(--red)}
 .evbadge{display:inline-flex;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--red);
   color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;margin-left:6px}
-.badge.rogue{background:rgba(248,81,73,.18);color:#ff9a93;border-color:rgba(248,81,73,.55)}
-.badge.drift{background:rgba(210,153,34,.16);color:#f0c674;border-color:rgba(210,153,34,.45)}
-.chip.rogueport,.pill.rogueport{background:rgba(248,81,73,.18)!important;border-color:rgba(248,81,73,.6)!important;color:#ff9a93!important}
-.card.isrogue{border-color:rgba(248,81,73,.55)!important;box-shadow:0 0 0 1px rgba(248,81,73,.3)}
+.badge.rogue{background:rgba(229,83,75,.18);color:#ff9a93;border-color:rgba(229,83,75,.55)}
+.badge.drift{background:rgba(198,144,38,.16);color:#f0c674;border-color:rgba(198,144,38,.45)}
+.chip.rogueport,.pill.rogueport{background:rgba(229,83,75,.18)!important;border-color:rgba(229,83,75,.6)!important;color:#ff9a93!important}
+.card.isrogue{border-color:rgba(229,83,75,.55)!important;box-shadow:0 0 0 1px rgba(229,83,75,.3)}
 .secpanel{display:grid;gap:14px}
 .seccard{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--border);border-radius:14px;padding:16px 18px}
 .seccard h3{margin:0 0 4px;font-size:15px}
@@ -252,14 +252,14 @@ textarea.ceinput{min-height:58px;resize:vertical}
 .bigstat .x{display:flex;flex-direction:column}
 .bigstat .x b{font-size:23px;font-family:var(--mono);font-weight:800;line-height:1.1}
 .bigstat .x span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
-.tier-critical{color:#ff6a60}.tier-high{color:#f85149}.tier-medium{color:#d29922}.tier-low{color:#a371f7}.tier-none{color:var(--muted)}
+.tier-critical{color:#ff6a60}.tier-high{color:#e5534b}.tier-medium{color:#c69026}.tier-low{color:#986ee2}.tier-none{color:var(--muted)}
 .evfeed .kind{font-family:var(--mono);font-size:10.5px;padding:2px 9px;border-radius:20px;border:1px solid var(--border)}
 .livedot{font-size:11px;font-family:var(--mono);margin-left:10px;font-weight:500}
 .livedot.on{color:var(--green)} .livedot.off{color:var(--muted)}
-.evfeed .kind.rogue_device{background:rgba(248,81,73,.16);color:#ff9a93;border-color:rgba(248,81,73,.5)}
-.evfeed .kind.new_open_port{background:rgba(210,153,34,.16);color:#f0c674;border-color:rgba(210,153,34,.45)}
-.secwarn{margin:0 0 14px;padding:11px 15px;border:1px solid rgba(210,153,34,.5);border-radius:11px;
-  background:rgba(210,153,34,.1);color:#f0c674;font-size:12.5px;display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+.evfeed .kind.rogue_device{background:rgba(229,83,75,.16);color:#ff9a93;border-color:rgba(229,83,75,.5)}
+.evfeed .kind.new_open_port{background:rgba(198,144,38,.16);color:#f0c674;border-color:rgba(198,144,38,.45)}
+.secwarn{margin:0 0 14px;padding:11px 15px;border:1px solid rgba(198,144,38,.5);border-radius:11px;
+  background:rgba(198,144,38,.1);color:#f0c674;font-size:12.5px;display:flex;align-items:flex-start;gap:10px;line-height:1.5}
 .secwarn b{color:#ffd98a}
 .tokrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;padding:11px 0;border-bottom:1px solid var(--line)}
 .tokrow:last-of-type{border-bottom:none}
@@ -278,13 +278,13 @@ textarea.ceinput{min-height:58px;resize:vertical}
 #sched-slider{accent-color:var(--ix);height:4px;cursor:pointer}
 .schedopts select,#sched-targets,#sched-profile,#sched-workers{background:var(--bg2);border:1px solid var(--ix-border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px}
 .srcbadge{display:inline-block;font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);letter-spacing:.3px}
-.srcbadge.src-manual{color:var(--cyan);border-color:rgba(56,139,253,.4)}
-.srcbadge.src-monitor{color:var(--violet);border-color:rgba(163,113,247,.4)}
-.srcbadge.src-schedule{color:var(--green);border-color:rgba(63,185,80,.4)}
-.srcbadge.src-mcp{color:var(--warm);border-color:rgba(227,179,65,.4)}
+.srcbadge.src-manual{color:var(--cyan);border-color:rgba(83,155,245,.4)}
+.srcbadge.src-monitor{color:var(--violet);border-color:rgba(152,110,226,.4)}
+.srcbadge.src-schedule{color:var(--green);border-color:rgba(87,171,90,.4)}
+.srcbadge.src-mcp{color:var(--warm);border-color:rgba(218,170,63,.4)}
 .srcbadge.src-api{color:var(--blue);border-color:rgba(59,130,246,.4)}
 .srcbadge.src-cli{color:#bcd0ee}
-.srcbadge.src-stopped{color:var(--red);border-color:rgba(248,81,73,.4)}
+.srcbadge.src-stopped{color:var(--red);border-color:rgba(229,83,75,.4)}
 .snip{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;
   font-family:var(--mono);font-size:11.5px;color:#bcd0ee;white-space:pre-wrap;word-break:break-all;margin-top:6px}
 </style>
@@ -296,14 +296,14 @@ textarea.ceinput{min-height:58px;resize:vertical}
     <svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <circle cx="20" cy="20" r="18" stroke="#203a5e" stroke-width="1"/>
       <circle cx="20" cy="20" r="12" stroke="#203a5e" stroke-width="1"/>
-      <circle cx="20" cy="20" r="6" stroke="#58a6ff" stroke-width="1"/>
-      <line x1="20" y1="2" x2="20" y2="38" stroke="#21262d"/>
-      <line x1="2" y1="20" x2="38" y2="20" stroke="#21262d"/>
-      <circle cx="20" cy="20" r="3" fill="#d29922"/>
-      <circle cx="32" cy="20" r="1.7" fill="#58a6ff"/>
-      <circle cx="14" cy="8" r="1.7" fill="#58a6ff"/>
-      <circle cx="9" cy="27" r="1.7" fill="#1f6feb"/>
-      <circle cx="28" cy="31" r="1.7" fill="#58a6ff"/>
+      <circle cx="20" cy="20" r="6" stroke="#539bf5" stroke-width="1"/>
+      <line x1="20" y1="2" x2="20" y2="38" stroke="#373e47"/>
+      <line x1="2" y1="20" x2="38" y2="20" stroke="#373e47"/>
+      <circle cx="20" cy="20" r="3" fill="#c69026"/>
+      <circle cx="32" cy="20" r="1.7" fill="#539bf5"/>
+      <circle cx="14" cy="8" r="1.7" fill="#539bf5"/>
+      <circle cx="9" cy="27" r="1.7" fill="#316dca"/>
+      <circle cx="28" cy="31" r="1.7" fill="#539bf5"/>
     </svg>
     <div>
       <h1>NETRYX</h1>
@@ -378,10 +378,10 @@ textarea.ceinput{min-height:58px;resize:vertical}
   </div>
 
   <div class="stats">
-    <div class="stat" style="--glow:rgba(56,139,253,.18)"><div class="n" id="s-total">0</div><div class="l">Devices found</div></div>
-    <div class="stat" style="--glow:rgba(56,139,253,.18)"><div class="n" id="s-web">0</div><div class="l">With web UI</div></div>
-    <div class="stat" style="--glow:rgba(163,113,247,.18)"><div class="n" id="s-ports">0</div><div class="l">Open ports</div></div>
-    <div class="stat" style="--glow:rgba(63,185,80,.2)"><div class="n" id="s-new">0</div><div class="l">New devices</div></div>
+    <div class="stat" style="--glow:rgba(83,155,245,.18)"><div class="n" id="s-total">0</div><div class="l">Devices found</div></div>
+    <div class="stat" style="--glow:rgba(83,155,245,.18)"><div class="n" id="s-web">0</div><div class="l">With web UI</div></div>
+    <div class="stat" style="--glow:rgba(152,110,226,.18)"><div class="n" id="s-ports">0</div><div class="l">Open ports</div></div>
+    <div class="stat" style="--glow:rgba(87,171,90,.2)"><div class="n" id="s-new">0</div><div class="l">New devices</div></div>
   </div>
 
   <div class="viewbar">
@@ -449,10 +449,10 @@ textarea.ceinput{min-height:58px;resize:vertical}
         <div class="body">
           <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="#8aa0bd" fill-opacity="0.22" stroke="#8aa0bd" stroke-width="1.5"/></svg>Group — click to expand</div>
           <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="#8aa0bd" fill-opacity="0.22" stroke="#8aa0bd" stroke-width="2" stroke-dasharray="4 2.5"/></svg>Group — expanded</div>
-          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="5" fill="#58a6ff"/></svg>Single device</div>
-          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="#3fb950" opacity="0.28"/><circle cx="11" cy="11" r="5" fill="#58a6ff"/></svg>New since last scan</div>
-          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="none" stroke="#d29922" stroke-width="2" stroke-dasharray="3 3"/><circle cx="11" cy="11" r="5" fill="#58a6ff"/></svg>New open port(s)</div>
-          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#d29922" opacity="0.16"/><circle cx="11" cy="11" r="6" fill="#e3b341"/></svg>Gateway / router</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>Single device</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="#57ab5a" opacity="0.28"/><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>New since last scan</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="none" stroke="#c69026" stroke-width="2" stroke-dasharray="3 3"/><circle cx="11" cy="11" r="5" fill="#539bf5"/></svg>New open port(s)</div>
+          <div class="row"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#c69026" opacity="0.16"/><circle cx="11" cy="11" r="6" fill="#daaa3f"/></svg>Gateway / router</div>
           <div class="row note">Fill colour = device type (risk tier in Exposure mode)</div>
         </div>
       </div>
@@ -479,8 +479,8 @@ textarea.ceinput{min-height:58px;resize:vertical}
   <div class="empty" id="empty">
     <svg width="64" height="64" viewBox="0 0 40 40" fill="none">
       <circle cx="20" cy="20" r="18" stroke="#203a5e"/><circle cx="20" cy="20" r="11" stroke="#203a5e"/>
-      <circle cx="20" cy="20" r="3" fill="#d29922"/>
-      <circle cx="31" cy="16" r="1.6" fill="#58a6ff"/><circle cx="11" cy="26" r="1.6" fill="#1f6feb"/>
+      <circle cx="20" cy="20" r="3" fill="#c69026"/>
+      <circle cx="31" cy="16" r="1.6" fill="#539bf5"/><circle cx="11" cy="26" r="1.6" fill="#316dca"/>
     </svg>
     <div>No survey yet. Set your subnet and press <b>Scan network</b> to begin mapping.</div>
   </div>
@@ -502,13 +502,13 @@ let liveMaxId=0, evtSrc=null, liveConnected=false;   // live event stream (SSE) 
 let mcpTimer=null;   // auto-refresh timer for the MCP activity panel
 
 const TYPE_META={
-  "Router / Gateway":{c:"#d29922"},"Network device":{c:"#d29922"},
-  "Media / Streaming":{c:"#a371f7"},"Media server (Plex)":{c:"#a371f7"},
-  "Printer":{c:"#5fe3c0"},"Scanner":{c:"#5fe3c0"},"IoT / Smart home":{c:"#3fb950"},
-  "Camera":{c:"#f85149"},"Apple device":{c:"#cdd6e3"},"Android device":{c:"#3fb950"},
-  "Raspberry Pi":{c:"#f85149"},"NAS / Storage":{c:"#1f6feb"},
-  "Windows PC / Server":{c:"#58a6ff"},"Server":{c:"#1f6feb"},"Computer":{c:"#58a6ff"},
-  "Web-enabled device":{c:"#58a6ff"},"Device":{c:"#7d8590"}
+  "Router / Gateway":{c:"#c69026"},"Network device":{c:"#c69026"},
+  "Media / Streaming":{c:"#986ee2"},"Media server (Plex)":{c:"#986ee2"},
+  "Printer":{c:"#5fe3c0"},"Scanner":{c:"#5fe3c0"},"IoT / Smart home":{c:"#57ab5a"},
+  "Camera":{c:"#e5534b"},"Apple device":{c:"#cdd6e3"},"Android device":{c:"#57ab5a"},
+  "Raspberry Pi":{c:"#e5534b"},"NAS / Storage":{c:"#316dca"},
+  "Windows PC / Server":{c:"#539bf5"},"Server":{c:"#316dca"},"Computer":{c:"#539bf5"},
+  "Web-enabled device":{c:"#539bf5"},"Device":{c:"#768390"}
 };
 function typeColor(t){return (TYPE_META[t]||TYPE_META["Device"]).c;}
 function icon(t){
@@ -996,7 +996,7 @@ const RISKY={23:'Telnet',2323:'Telnet',3389:'RDP',445:'SMB',139:'NetBIOS',21:'FT
   5900:'VNC',1433:'MSSQL',3306:'MySQL',5432:'Postgres',6379:'Redis',27017:'MongoDB',
   9200:'Elasticsearch',11211:'Memcached',2375:'Docker',5555:'ADB',2049:'NFS',
   512:'rexec',513:'rlogin',514:'rsh'};
-const RISK_COL={red:'#f85149',amber:'#d29922',green:'#3fb950'};
+const RISK_COL={red:'#e5534b',amber:'#c69026',green:'#57ab5a'};
 function riskOf(d){
   const ports=d.ports||[]; const reasons=[]; let score=0;
   ports.forEach(p=>{if(RISKY[p.port]){score+=3;reasons.push(RISKY[p.port]);}});
@@ -1013,8 +1013,8 @@ function groupKey(d){
   return d.device_type||'Device';
 }
 function groupColor(key,members){
-  if(mapMode==='exposure')return RISK_COL[key]||'#7d8590';
-  if(mapMode==='changes')return key==='new'?'#3fb950':(key==='changed'?'#d29922':'#41506a');
+  if(mapMode==='exposure')return RISK_COL[key]||'#768390';
+  if(mapMode==='changes')return key==='new'?'#57ab5a':(key==='changed'?'#c69026':'#41506a');
   if(mapMode==='graph')return typeColor(key);
   const tc={}; (members||[]).forEach(d=>tc[d.device_type]=(tc[d.device_type]||0)+1);
   return typeColor(Object.keys(tc).sort((a,b)=>tc[b]-tc[a])[0]);
@@ -1067,7 +1067,7 @@ function startGraph(list){
   const keys=groupOrder(Object.keys(groups));
 
   const nodes=[]; const idByKey={};
-  nodes.push({id:'hub',kind:'hub',color:'#d29922',r:13,parent:-1,
+  nodes.push({id:'hub',kind:'hub',color:'#c69026',r:13,parent:-1,
     x:cx,y:cy,vx:0,vy:0,fx:cx,fy:cy,d:gwDev||null,label:gwDev?gwDev.ip:'NETWORK'});
   keys.forEach((k,i)=>{
     const members=groups[k], col=groupColor(k,members);
@@ -1101,8 +1101,8 @@ function startGraph(list){
   function nodeMarkup(n,i){
     if(n.kind==='hub')
       return '<g class="tnode" id="n'+i+'" style="cursor:'+(n.d?'pointer':'default')+'">'+
-        '<circle r="26" fill="#d29922" opacity="0.12"/><circle r="'+n.r+'" fill="url(#og)"/>'+
-        '<text class="tlabel" y="'+(n.r+16)+'" text-anchor="middle" style="fill:#d29922">'+esc(n.label)+'</text></g>';
+        '<circle r="26" fill="#c69026" opacity="0.12"/><circle r="'+n.r+'" fill="url(#og)"/>'+
+        '<text class="tlabel" y="'+(n.r+16)+'" text-anchor="middle" style="fill:#c69026">'+esc(n.label)+'</text></g>';
     if(n.kind==='agg'){
       const ex=expanded.has(n.key);
       return '<g class="tnode" id="n'+i+'" style="cursor:pointer">'+
@@ -1111,15 +1111,15 @@ function startGraph(list){
         '<text y="5" text-anchor="middle" style="fill:#eef4fb;font-size:'+(n.r>=24?17:14)+'px;font-weight:600">'+n.count+'</text>'+
         '<text class="tlabel" y="'+(n.r+16)+'" text-anchor="middle" style="fill:'+n.color+'">'+esc(n.label)+(ex?' ▾':' ▸')+'</text></g>';
     }
-    const ring=n.ring==='new'?'<circle r="'+(n.r+6)+'" fill="#3fb950" opacity="0.25"/>'
-      :(n.ring==='chg'?'<circle r="'+(n.r+5)+'" fill="none" stroke="#d29922" stroke-width="2" stroke-dasharray="3 3"/>':'');
+    const ring=n.ring==='new'?'<circle r="'+(n.r+6)+'" fill="#57ab5a" opacity="0.25"/>'
+      :(n.ring==='chg'?'<circle r="'+(n.r+5)+'" fill="none" stroke="#c69026" stroke-width="2" stroke-dasharray="3 3"/>':'');
     return '<g class="tnode" id="n'+i+'" style="cursor:pointer">'+ring+
-      '<circle r="'+n.r+'" fill="'+n.color+'" stroke="#0d1117" stroke-width="1.4"/>'+
+      '<circle r="'+n.r+'" fill="'+n.color+'" stroke="#22272e" stroke-width="1.4"/>'+
       '<text class="tlabel" y="'+(n.r+12)+'" text-anchor="middle">'+esc(leafLabel(n.d))+'</text></g>';
   }
 
   let svg='<svg viewBox="0 0 '+W+' '+H+'" id="mapsvg" xmlns="http://www.w3.org/2000/svg">';
-  svg+='<defs><radialGradient id="og"><stop offset="0%" stop-color="#e3b341"/><stop offset="100%" stop-color="#d29922"/></radialGradient></defs><g id="edges">';
+  svg+='<defs><radialGradient id="og"><stop offset="0%" stop-color="#daaa3f"/><stop offset="100%" stop-color="#c69026"/></radialGradient></defs><g id="edges">';
   nodes.forEach((n,i)=>{ if(n.parent>=0) svg+='<line id="e'+i+'" stroke="'+n.color+'" stroke-width="1" stroke-opacity="'+(n.kind==='leaf'?0.22:0.14)+'"/>'; });
   svg+='</g><g id="nds">';
   nodes.forEach((n,i)=>svg+=nodeMarkup(n,i));
@@ -1199,7 +1199,7 @@ function renderIPGrid(list){
       const col=typeColor(dom), op=(0.22+0.66*(items.length/maxc)).toFixed(2);
       const anyNew=items.some(d=>d.new), anyChg=items.some(d=>d.changed);
       s+='<g style="cursor:pointer" onclick="setGridSubnet(\''+b+'\')">'+
-        '<rect x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'" rx="12" fill="'+col+'" fill-opacity="'+op+'" stroke="'+(anyNew?'#3fb950':(anyChg?'#d29922':'#30363d'))+'" stroke-width="'+(anyNew||anyChg?2:1)+'"/>'+
+        '<rect x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'" rx="12" fill="'+col+'" fill-opacity="'+op+'" stroke="'+(anyNew?'#57ab5a':(anyChg?'#c69026':'#444c56'))+'" stroke-width="'+(anyNew||anyChg?2:1)+'"/>'+
         '<text x="'+(x+cell/2)+'" y="'+(y+cell/2-4)+'" text-anchor="middle" style="fill:#e9eff7;font-size:26px;font-weight:600">'+items.length+'</text>'+
         '<text x="'+(x+cell/2)+'" y="'+(y+cell/2+18)+'" text-anchor="middle" style="fill:#cdd6e3;font-size:12px;font-family:ui-monospace,monospace">'+b+'.x</text></g>';
     });
@@ -1213,27 +1213,27 @@ function renderIPGrid(list){
   const cols=16, cell=54, gap=8, pad=18, top=(bases.length>1?34:0);
   const W=pad*2+cols*(cell+gap)-gap, rows=16, H=pad*2+top+rows*(cell+gap)-gap+10;
   let s='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
-  if(bases.length>1) s+='<text x="'+pad+'" y="'+(pad+8)+'" onclick="setGridSubnet(null)" style="cursor:pointer;fill:#58a6ff;font-size:13px;font-family:ui-monospace,monospace">‹ All subnets</text>'+
-    '<text x="'+(W-pad)+'" y="'+(pad+8)+'" text-anchor="end" style="fill:#7d8590;font-size:13px;font-family:ui-monospace,monospace">'+esc(base+'.0/24')+'</text>';
+  if(bases.length>1) s+='<text x="'+pad+'" y="'+(pad+8)+'" onclick="setGridSubnet(null)" style="cursor:pointer;fill:#539bf5;font-size:13px;font-family:ui-monospace,monospace">‹ All subnets</text>'+
+    '<text x="'+(W-pad)+'" y="'+(pad+8)+'" text-anchor="end" style="fill:#768390;font-size:13px;font-family:ui-monospace,monospace">'+esc(base+'.0/24')+'</text>';
   for(let o=0;o<256;o++){
     const r=Math.floor(o/cols), c=o%cols, x=pad+c*(cell+gap), y=pad+top+r*(cell+gap), d=byOct[o];
     if(d){
-      const col=typeColor(d.device_type), stroke=d.is_self?'#58a6ff':(d.is_gateway?'#d29922':'#0d1117'), sw=(d.is_self||d.is_gateway)?2.5:1;
+      const col=typeColor(d.device_type), stroke=d.is_self?'#539bf5':(d.is_gateway?'#c69026':'#22272e'), sw=(d.is_self||d.is_gateway)?2.5:1;
       let gl=nodeField(d,mapLabel)||(''+o); if(gl.length>28)gl=gl.slice(0,27)+'…';
       const gfs=/^\d+$/.test(gl)?13:(gl.length>10?8:10);
       s+='<g class="tnode" style="cursor:pointer" onclick="focusCard(\''+esc(d.ip)+'\')" onmousemove="showTip(event,\''+esc(d.ip)+'\')" onmouseleave="hideTip()">'+
         '<rect x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'" rx="8" fill="'+col+'" fill-opacity="'+(d.new?'0.95':'0.78')+'" stroke="'+stroke+'" stroke-width="'+sw+'"/>'+
         '<foreignObject x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:2px;box-sizing:border-box;color:#06121c;font-weight:600;font-size:'+gfs+'px;line-height:1.05;word-break:break-word;overflow:hidden">'+esc(gl)+'</div></foreignObject></g>';
     }else{
-      s+='<rect x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'" rx="8" fill="#161b22" stroke="#21262d"/>'+
+      s+='<rect x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'" rx="8" fill="#2d333b" stroke="#373e47"/>'+
         '<text x="'+(x+cell/2)+'" y="'+(y+cell/2+4)+'" text-anchor="middle" style="fill:#2f3c52;font-size:10px">'+o+'</text>';
     }
   }
   s+='</svg>';
   document.getElementById('svgwrap').innerHTML=s;
   document.getElementById('legend').innerHTML='<span class="hint">'+esc(base)+'.0 → .255 · filled = in use</span>'+
-    '<span><span class="lg" style="background:#d29922"></span>gateway</span>'+
-    '<span><span class="lg" style="background:#58a6ff"></span>this PC</span>'+
+    '<span><span class="lg" style="background:#c69026"></span>gateway</span>'+
+    '<span><span class="lg" style="background:#539bf5"></span>this PC</span>'+
     '<span class="hint">contiguous = DHCP pool · gaps = free addresses</span>';
 }
 

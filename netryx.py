@@ -2085,8 +2085,8 @@ def login_page():
 <title>Netryx - Sign in</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzBkMTExNycvPjxjaXJjbGUgY3g9JzE2JyBjeT0nMTYnIHI9JzExJyBmaWxsPSdub25lJyBzdHJva2U9JyMzMDM2M2QnIHN0cm9rZS13aWR0aD0nMicvPjxjaXJjbGUgY3g9JzE2JyBjeT0nMTYnIHI9JzcnIGZpbGw9J25vbmUnIHN0cm9rZT0nIzFmNmZlYicgc3Ryb2tlLXdpZHRoPScyJy8+PGNpcmNsZSBjeD0nMTYnIGN5PScxNicgcj0nMycgZmlsbD0nIzU4YTZmZicvPjwvc3ZnPg==">
 <style>
-:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#e6edf3;--muted:#7d8590;--cyan:#58a6ff;--blue:#1f6feb;--red:#f85149;
-  --primary:#238636;--primary-hi:#2ea043}
+:root{--bg:#22272e;--panel:#2d333b;--border:#444c56;--text:#adbac7;--muted:#768390;--cyan:#539bf5;--blue:#316dca;--red:#e5534b;
+  --primary:#347d39;--primary-hi:#46954a}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);
@@ -2097,10 +2097,10 @@ body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:c
 .brand h1{font-size:18px;letter-spacing:4px;margin:14px 0 2px;font-weight:700}
 .brand .tag{font-size:10.5px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,monospace}
 label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 0 6px}
-input{width:100%;background:#0d1117;border:1px solid var(--border);color:var(--text);
+input{width:100%;background:#1c2128;border:1px solid var(--border);color:var(--text);
   border-radius:6px;padding:11px 13px;font-size:14px;outline:none;transition:.15s}
-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,129,247,.4)}
-button{width:100%;margin-top:20px;border:1px solid rgba(240,246,252,.1);border-radius:6px;padding:12px;font-size:14px;font-weight:500;
+input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(83,155,245,.4)}
+button{width:100%;margin-top:20px;border:1px solid rgba(205,217,229,.1);border-radius:6px;padding:12px;font-size:14px;font-weight:500;
   color:#fff;background:var(--primary);cursor:pointer}
 button:hover{background:var(--primary-hi)}
 button:active{transform:translateY(1px)}
