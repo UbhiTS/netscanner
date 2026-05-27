@@ -558,10 +558,10 @@ const TYPE_META={
   "Router / Gateway":{c:"#c69026"},"Network device":{c:"#c69026"},
   "Media / Streaming":{c:"#986ee2"},"Media server (Plex)":{c:"#986ee2"},
   "Printer":{c:"#5fe3c0"},"Scanner":{c:"#5fe3c0"},"IoT / Smart home":{c:"#57ab5a"},
-  "Camera":{c:"#e5534b"},"Apple device":{c:"#cdd6e3"},"Android device":{c:"#57ab5a"},
+  "Camera":{c:"#e5534b"},"Apple device":{c:"#d6649a"},"Android device":{c:"#57ab5a"},
   "Raspberry Pi":{c:"#e5534b"},"NAS / Storage":{c:"#316dca"},
   "Windows PC / Server":{c:"#539bf5"},"Server":{c:"#316dca"},"Computer":{c:"#539bf5"},
-  "Web-enabled device":{c:"#539bf5"},"Device":{c:"#768390"}
+  "Web-enabled device":{c:"#539bf5"},"Device":{c:"#39afc4"}
 };
 function typeColor(t){return (TYPE_META[t]||TYPE_META["Device"]).c;}
 function icon(t){
@@ -1738,17 +1738,15 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&editingIp)cancelCar
 window.addEventListener('resize',()=>{if(view==='map')renderTopo();});
 // "Scan ports" — on by default, and remember the user's choice thereafter.
 function saveScanPorts(){try{localStorage.setItem('ns_scanports',document.getElementById('scanports').checked?'1':'0');}catch(_){}}
-// Theme cycle — ping-pong through dark › medium › light › medium › dark …
-// The early <head> script sets the initial value; this advances + remembers it (with direction).
+// Theme cycle — forward through dark › medium › light › dark …
+// The early <head> script sets the initial value; this advances + remembers it.
 var THEMES=['dark','medium','light'];
 function toggleTheme(){
   var cur=document.documentElement.getAttribute('data-theme');
   var i=THEMES.indexOf(cur); if(i<0)i=0;
-  var dir=1; try{if(localStorage.getItem('ns_theme_dir')==='-1')dir=-1;}catch(_){}
-  if(i===0)dir=1; else if(i===THEMES.length-1)dir=-1;   // bounce off the ends
-  var next=THEMES[i+dir];
+  var next=THEMES[(i+1)%THEMES.length];
   document.documentElement.setAttribute('data-theme',next);
-  try{localStorage.setItem('ns_theme',next);localStorage.setItem('ns_theme_dir',String(dir));}catch(_){}
+  try{localStorage.setItem('ns_theme',next);}catch(_){}
 }
 try{matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(e){
   if(!localStorage.getItem('ns_theme')) document.documentElement.setAttribute('data-theme',e.matches?'light':'dark');
